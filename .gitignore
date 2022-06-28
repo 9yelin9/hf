@@ -1,0 +1,6 @@
+diagram/
+output/
+*.bin
+*.txt
+*.csv
+*.dat
