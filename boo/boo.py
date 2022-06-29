@@ -1,4 +1,4 @@
-# cao/cao.py : make input and output of CuAl2O4 model
+# boo/boo.py : make input and output of BaOsO3 model
 
 import os
 import re

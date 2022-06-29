@@ -3,13 +3,52 @@
 #include "../hf3.h"
 #include "boo.h"
 
-void Interaction(Solution *s, lapack_complex_double *v_tmp) {
+void InteractionF(Solution *s, lapack_complex_double *v_tmp) {
 	int i, j;
+	double n_diff[OBT], m_diff[OBT];
+	
+	memset(n_diff, 0, sizeof(n_diff));
+	memset(m_diff, 0, sizeof(m_diff));
+
+	for(i=0; i<OBT; i++) {
+		for(j=0; j<OBT; j++) {
+			if(j != i) {
+				n_diff[i] += s->n[j];
+				m_diff[i] += s->m[j];
+			}
+		}		
+	}
 
 	for(i=0; i<H(s->basis); i+=(s->basis+1)) {
+		j = (i / s->basis) % OBT;
+		v_tmp[i] += (s->U * s->n[j] + (s->U - 2.5*s->J) * n_diff[j]); 
+		v_tmp[i] -= (s->U * s->m[j] + (s->U - 2.5*s->J) * n_diff[j]) * pow(-1, 2*i/H(s->basis)); 
+	}
+}
+
+void InteractionA(Solution *s, lapack_complex_double *v_tmp) {
+	int i, j;
+	double n_diff[OBT], m_diff[OBT];
+	
+	memset(n_diff, 0, sizeof(n_diff));
+	memset(m_diff, 0, sizeof(m_diff));
+
+	for(i=0; i<OBT; i++) {
 		for(j=0; j<OBT; j++) {
-			v_tmp[i] += s->U * (s->n[j] - s->m[j] * pow(-1, i%2));
-		}
+			if(j != i) {
+				n_diff[i] += s->n[j];
+				m_diff[i] += s->m[j];
+			}
+		}		
+	}
+
+	for(i=0; i<H(s->basis); i+=(s->basis+1)) {
+		j = (i / (2*s->basis)) % OBT;
+		v_tmp[i] += (s->U * s->n[j] + (s->U - 2.5*s->J) * n_diff[j]); 
+	}
+	for(i=1; i<H(s->basis); i+=(s->basis+1)*2) {
+		j = (i / (2*s->basis)) % OBT;
+		v_tmp[i] -= (s->U * s->m[j] + (s->U - 2.5*s->J) * n_diff[j]) * pow(-1, 2*i/H(s->basis)); 
 	}
 }
 
@@ -75,13 +114,7 @@ int main(int argc, char *argv[]) {
 	struct tm *tm = localtime(&t);
 	sprintf(s.runtime, "%d%d%d%d", tm->tm_mon+1, tm->tm_mday, tm->tm_hour, tm->tm_min); 
 
-	if(strstr(s.type, "f")) {
-		s.basis = 6;
-	}
-	else {
-		s.basis = 12;
-	}
-
+	s.basis = strstr(s.type, "f") ? 6 : 12,
 	s.tbk = (lapack_complex_double*)malloc(HK(K3, s.basis) * sizeof(lapack_complex_double));
 	s.tbb = (lapack_complex_double*)malloc(HB(BAND, s.basis) * sizeof(lapack_complex_double));
 
@@ -90,6 +123,9 @@ int main(int argc, char *argv[]) {
 
 	MakeBand(&s);
 	MakeDos(&s);
+
+	free(s.tbk);
+	free(s.tbb);
 
 	return 0;
 }

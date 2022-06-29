@@ -37,6 +37,9 @@ Energy CalcEigen(Solution *s, const int k_num, lapack_complex_double *tb, double
 	lapack_complex_double work[lwork], v_tmp[H(s->basis)];
 	
 	int i, j;
+	void (*Interaction)(Solution*, lapack_complex_double*);
+
+	Interaction = strstr(s->type, "f") ? InteractionF : InteractionA;
 
 	for(i=0; i<k_num; i++) {
 		for(j=0; j<H(s->basis); j++) {
@@ -90,12 +93,7 @@ void CalcSolution(Solution *s) {
 	void (*Occupation)(int, double, double*, lapack_complex_double*, double*, double*, double*);
 	Energy energy;
 
-	if(strstr(s->type, "f")) {
-		Occupation = OccupationF;
-	}
-	else {
-		Occupation = OccupationA;
-	}
+	Occupation = strstr(s->type, "f") ? OccupationF : OccupationA;
 
 	for(i=0; i<OBT*3; i++) {
 		cvg[i] = 100;

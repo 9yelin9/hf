@@ -58,9 +58,10 @@ extern const int K; // num of k points in k space path
 extern const int K3; // K*K*K
 extern const int BAND; //num of kpoints in band path
 
-extern void Interaction(Solution *s, lapack_complex_double *v_tmp); // add interaction term to Hamiltonian 
-extern void FourierF(FILE *f, const int num, const int basis, Vector v, Vector q, lapack_complex_double *tb); // Fourier transform FM
-extern void FourierA(FILE *f, const int num, const int basis, Vector v, Vector q, lapack_complex_double *tb); // Fourier transform AF
+extern void InteractionF(Solution *s, lapack_complex_double *v_tmp); // add interaction term to Hamiltonian of FM
+extern void InteractionA(Solution *s, lapack_complex_double *v_tmp); // add interaction term to Hamiltonian of AF
+extern void FourierF(FILE *f, const int num, const int basis, Vector v, Vector q, lapack_complex_double *tb); // Fourier transform of FM
+extern void FourierA(FILE *f, const int num, const int basis, Vector v, Vector q, lapack_complex_double *tb); // Fourier transform of AF
 extern void OccupationF(int basis, double fermi, double *w, lapack_complex_double *v, double *n, double *m, double *e); // calculate occupation of FM
 extern void OccupationA(int basis, double fermi, double *w, lapack_complex_double *v, double *n, double *m, double *e); // calcultae occupation of AF
 

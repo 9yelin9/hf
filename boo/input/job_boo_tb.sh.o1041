@@ -1,0 +1,12 @@
+CalcTB(tb_f_K16.bin) : 322s
+CalcTB(tb_f_BAND.bin) : 33s
+CalcTB(tb_a_K16.bin) : 472s
+CalcTB(tb_a_BAND.bin) : 42s
+CalcTB(tb_c_K16.bin) : 476s
+CalcTB(tb_c_BAND.bin) : 43s
+CalcTB(tb_g_K16.bin) : 475s
+CalcTB(tb_g_BAND.bin) : 43s
+
+# Job Start : Wed Jun 29 14:51:52 KST 2022
+# Job End   : Wed Jun 29 15:23:38 KST 2022
+# Elapsed time : 0h 31m 46.148905312s

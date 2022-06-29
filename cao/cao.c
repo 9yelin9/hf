@@ -75,13 +75,7 @@ int main(int argc, char *argv[]) {
 	struct tm *tm = localtime(&t);
 	sprintf(s.runtime, "%d%d%d%d", tm->tm_mon+1, tm->tm_mday, tm->tm_hour, tm->tm_min); 
 
-	if(strstr(s.type, "f")) {
-		s.basis = 6;
-	}
-	else {
-		s.basis = 12;
-	}
-
+	s.basis = strstr(s.type, "f") ? 6 : 12, 
 	s.tbk = (lapack_complex_double*)malloc(HK(K3, s.basis) * sizeof(lapack_complex_double));
 	s.tbb = (lapack_complex_double*)malloc(HB(BAND, s.basis) * sizeof(lapack_complex_double));
 
@@ -90,6 +84,9 @@ int main(int argc, char *argv[]) {
 
 	MakeBand(&s);
 	MakeDos(&s);
+
+	free(s.tbk);
+	free(s.tbb);
 
 	return 0;
 }
