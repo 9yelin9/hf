@@ -1,5 +1,8 @@
 // boo/boo.c : calculate BaOsO3 model
 
+#include "../hf3.h"
+#include "boo.h"
+
 void Interaction(Solution *s, lapack_complex_double *v_tmp) {
 	int i, j;
 

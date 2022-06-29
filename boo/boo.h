@@ -5,7 +5,7 @@
 
 const int K = 16;
 const int K3 = 16*16*16;
-const int BAND = 800;
+const int BAND = 510;
 
 void Interaction(Solution *s, lapack_complex_double *v_tmp); 
 void FourierF(FILE *f, const int num, const int basis, Vector v, Vector q, lapack_complex_double *tb);

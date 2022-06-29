@@ -1,33 +1,46 @@
-# cao/d.py : 
+# pyhf3/draw.py : draw diagrams of 3 band models
 
 import os
 import re
-import sys
-import time
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 
-parser = argparse.ArgumentParser()
-parser.add_argument('-v', '--values', nargs='+', default=['f', 0.0, 0.0, 5.0, 0.0], help='<type> <K> <JU> <SOC> <N> <U>')
-parser.add_argument('-c', '--cvg', type=int, default=0)
-parser.add_argument('-b', '--band', type=int, default=1)
-parser.add_argument('-p', '--phase', type=int, default=0)
-args = parser.parse_args()
-
-class Diagrams:
-	def __init__(self, type, JU, SOC):
+class Draw:
+	def __init__(self, type='f', JU=0.0, SOC=0.0, path=[], path_label=[]):
 		self.type = type
-		self.K = 16
 		self.JU = float(JU)
 		self.SOC = float(SOC)
+		self.path = path
+		self.path_label = path_label
+
+		self.K = 16
 		self.obt = 3
 		self.basis = 6 if re.search('f', type) else 12
+
 		self.dir = 'output/K%d_JU%.2f_SOC%.2f/' % (self.K, self.JU, self.SOC)
 		self.title = '%s K=%d J/U=%.2f SOC=%.2f\n' % (type, self.K, self.JU, self.SOC)
 		self.colors=['b', 'g', 'r']
 		self.labels=['xy', 'yz', 'zx']
 	
+	def DrawTB(self):
+		f_name = 'input/band_%s.txt' % (self.type)
+		f = open(f_name, 'r')
+		arr = np.genfromtxt(f)
+		f.close()
+
+		fig, ax = plt.subplots()
+
+		for i in range(1, self.basis+1):
+			ax.plot(arr[:, 0], arr[:, i], color='tab:blue')
+
+		ax.grid(True)
+		ax.set_xticks(self.path)
+		ax.set_xticklabels(self.path_label)
+		plt.suptitle(f_name)	
+		fig.tight_layout()
+		plt.show()
+
 	def DrawBand(self, N, U, ax):
 		N = float(N)
 		U = float(U)
@@ -48,8 +61,8 @@ class Diagrams:
 			ax.plot(arr[:, 0], arr[:, i] - fermi, color='tab:blue')
 
 		ax.grid(True)
-		ax.set_xticks([0, 150, 350, 400, 500, 575, 800])
-		ax.set_xticklabels(['L', 'G', 'X', 'W', 'L', 'K', 'G'])
+		ax.set_xticks(self.path)
+		ax.set_xticklabels(self.path_label)
 		ax.set_xlabel('Path')
 		ax.set_ylabel('Energy')
 		ax.set_ylim(e_min, e_max)
@@ -111,8 +124,3 @@ class Diagrams:
 		fig.tight_layout()
 		fig.savefig('diagram/%s/%s' % (re.sub('output/', '', self.dir), re.sub('txt', 'png', f_name)))
 		plt.show()
-	
-d = Diagrams(args.values[0], args.values[1], args.values[2])
-if args.cvg:   pass
-if args.band:  d.DrawBandDos(args.values[3], args.values[4])
-if args.phase: pass

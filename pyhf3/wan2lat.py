@@ -4,8 +4,8 @@ import re
 
 class Wan2Lat:
 	def Extract(self):
-		wan = open('wannier90_hr.dat', 'r')
-		lat = open('lattice.txt', 'w')
+		wan = open('input/wannier90_hr.dat', 'r')
+		lat = open('input/lattice.txt', 'w')
 
 		pat_site = '[-]?\d+\s+'
 		pat_obt = '[-]?\d+\s+'

@@ -1,4 +1,4 @@
-// cao/input/input.c : calculate tight-binding Hamiltonian of CuAl2O4 model 
+// cao/input/cao_tb.c : calculate tight-binding Hamiltonian of CuAl2O4 model 
 
 #include "../../hf3.h"
 #include "../cao.h"

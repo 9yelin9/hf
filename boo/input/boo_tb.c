@@ -1,5 +1,6 @@
-// boo/input/input.c : calculate tight-binding Hamiltonian of BaOsO3 model
+// boo/input/boo_tb.c : calculate tight-binding Hamiltonian of BaOsO3 model
 
+#include "../../hf3.h"
 #include "../boo.h"
 
 void CalcBAND(Vector *v) {
