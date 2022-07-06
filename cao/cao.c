@@ -3,14 +3,10 @@
 #include "../hf3.h"
 #include "cao.h"
 
-void Interaction(Solution *s, lapack_complex_double *v_tmp) {
-	int i, j;
+void InteractionF(Solution *s, lapack_complex_double *v_tmp) {
+}
 
-	for(i=0; i<H(s->basis); i+=(s->basis+1)) {
-		for(j=0; j<OBT; j++) {
-			v_tmp[i] += s->U * (s->n[j] - s->m[j] * pow(-1, i%2));
-		}
-	}
+void InteractionA(Solution *s, lapack_complex_double *v_tmp) {
 }
 
 void OccupationF(int basis, double fermi, double *w, lapack_complex_double *v, double *n, double *m, double *e) {
@@ -76,8 +72,8 @@ int main(int argc, char *argv[]) {
 	sprintf(s.runtime, "%d%d%d%d", tm->tm_mon+1, tm->tm_mday, tm->tm_hour, tm->tm_min); 
 
 	s.basis = strstr(s.type, "f") ? 6 : 12, 
-	s.tbk = (lapack_complex_double*)malloc(HK(K3, s.basis) * sizeof(lapack_complex_double));
-	s.tbb = (lapack_complex_double*)malloc(HB(BAND, s.basis) * sizeof(lapack_complex_double));
+	s.tbk = (lapack_complex_double*)malloc(HK(s.basis) * sizeof(lapack_complex_double));
+	s.tbb = (lapack_complex_double*)malloc(HB(s.basis) * sizeof(lapack_complex_double));
 
 	ReadTB(s.type, s.basis, s.tbk, s.tbb);
 	CalcSolution(&s);

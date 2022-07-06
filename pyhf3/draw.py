@@ -108,8 +108,8 @@ class Draw:
 
 		fig, ax = plt.subplots(1, 2, gridspec_kw={'width_ratios': [3, 1]}, figsize=[16, 8])
 
-		e_min, e_max, f_name = d.DrawBand(N, U, ax[0])
-		d.DrawDos(N, U, ax[1], e_min, e_max)
+		e_min, e_max, f_name = self.DrawBand(N, U, ax[0])
+		self.DrawDos(N, U, ax[1], e_min, e_max)
 
 		f_name_s = f_name.split(sep='_')
 		f_name_s = [s for s in f_name_s if re.search('[a-zA-Z]+\d+[.]\d+', s)]

@@ -85,7 +85,7 @@ int main(int argc, char *argv[]) {
 	int basis = strstr(type, "f") ? 6 : 12;
 	char fk_name[32], fb_name[32];
 	Vector vk[K3], vb[BAND];
-	lapack_complex_double tbk[HK(K3, basis)], tbb[HB(BAND, basis)];
+	lapack_complex_double tbk[HK(basis)], tbb[HB(basis)];
 
 	sprintf(fk_name, "tb_%s_K%d.bin", type, K);
 	sprintf(fb_name, "tb_%s_BAND.bin", type);
@@ -93,8 +93,8 @@ int main(int argc, char *argv[]) {
 	CalcK(vk);
 	CalcBAND(vb);
 
-	CalcTB(fk_name, basis, K3, HK(K3, basis), vk, tbk);
-	CalcTB(fb_name, basis, BAND, HB(BAND, basis), vb, tbb);
+	CalcTB(fk_name, basis, K3, HK(basis), vk, tbk);
+	CalcTB(fb_name, basis, BAND, HB(basis), vb, tbb);
 	MakeTB(type, basis, tbb);
 
 	return 0;

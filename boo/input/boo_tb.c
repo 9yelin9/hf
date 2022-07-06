@@ -1,5 +1,8 @@
 // boo/input/boo_tb.c : calculate tight-binding Hamiltonian of BaOsO3 model
 
+#define DOT0(k, g, r) ((k.x + g.x)*r.x + (k.y + g.y)*r.y + (k.z + g.z)*r.z)
+#define DOT(v, k, g, r) ((creal(v) * cos(DOT0(k, g, r)) + cimag(v) * sin(DOT0(k, g, r))) - (creal(v) * sin(DOT0(k, g, r)) - cimag(v) * cos(DOT0(k, g, r))) * I)
+
 #include "../../hf3.h"
 #include "../boo.h"
 
@@ -35,7 +38,14 @@ void CalcBAND(Vector *v) {
 	}
 }
 
-void FourierF(FILE *f, const int num, const int basis, Vector v, Vector q, lapack_complex_double *tb) {
+void FourierF(const int basis, int num, Vector v, Vector q, lapack_complex_double *tb) {
+	FILE *f; 
+
+	if((f = fopen("lattice.txt", "r")) == NULL) {
+		printf("lattice.txt fopen FAIL\n");
+		exit(1);
+	}
+
 	int i, j, k, obt1, obt2;
 	double tre, tim;
 	lapack_complex_double tb_tmp[basis][basis];
@@ -47,6 +57,7 @@ void FourierF(FILE *f, const int num, const int basis, Vector v, Vector q, lapac
 		tb_tmp[obt1-1][obt2-1] += (tre * cos(v.x*i + v.y*j + v.z*k) - tim * sin(v.x*i + v.y*j + v.z*k))
 								+ (tre * sin(v.x*i + v.y*j + v.z*k) + tim * cos(v.x*i + v.y*j + v.z*k)) * I; 
 	}
+	fclose(f);
 
 	for(i=0; i<OBT; i++) {
 		for(j=0; j<OBT; j++) {
@@ -63,7 +74,14 @@ void FourierF(FILE *f, const int num, const int basis, Vector v, Vector q, lapac
 	}
 }
 
-void FourierA(FILE *f, const int num, const int basis, Vector v, Vector q, lapack_complex_double *tb) {
+void FourierA(const int basis, int num, Vector v, Vector q, lapack_complex_double *tb) {
+	FILE *f; 
+
+	if((f = fopen("lattice.txt", "r")) == NULL) {
+		printf("lattice.txt fopen FAIL\n");
+		exit(1);
+	}
+
 	int i, j, k, obt1, obt2;
 	double tre, tim;
 	lapack_complex_double tb_tmp[basis][basis];
@@ -77,6 +95,7 @@ void FourierA(FILE *f, const int num, const int basis, Vector v, Vector q, lapac
 		tb_tmp[obt1-1 + OBT][obt2-1 + OBT] += (tre * cos((v.x + q.x)*i + (v.y + q.y)*j + (v.z + q.z)*k) - tim * sin((v.x + q.x)*i + (v.y + q.y)*j + (v.z + q.z)))
 											+ (tre * sin((v.x + q.x)*i + (v.y + q.y)*j + (v.z + q.z)*k) + tim * cos((v.x + q.x)*i + (v.y + q.y)*j + (v.z + q.z))) * I; 
 	}
+	fclose(f);
 
 	for(i=0; i<OBT; i++) {
 		for(j=0; j<OBT; j++) {
@@ -92,30 +111,136 @@ void FourierA(FILE *f, const int num, const int basis, Vector v, Vector q, lapac
 			k++;
 		}
 	}
+
+}
+
+void Unfold(char *type, const int super, Vector q) {
+	FILE *fi, *fo;
+	char fi_name[32], fo_name[32];
+
+	sprintf(fi_name, "tb_%s_BAND.bin", type);
+	sprintf(fo_name, "band_%s_unfold.txt", type);
+
+	if((fi = fopen(fi_name, "rb")) == NULL) {
+		printf("%s fopen FAIL\n", fi_name);
+		exit(1);
+	}
+	if((fo = fopen(fo_name, "w")) == NULL) {
+		printf("%s fopen FAIL\n", fo_name);
+		exit(1);
+	}
+
+	const int basis = BASIS2;
+	int i, j, l, m;
+	double p2up, p2dn;
+	Vector vb[BAND], g, r[super];
+	lapack_complex_double pup, pdn;
+
+	double w[BAND*basis];
+	lapack_complex_double tbb[HB(basis)], v[HB(basis)];
+
+	g.x = 0;
+	g.y = 0;
+	g.z = 0;
+
+	r[0].x = 0;
+	r[0].y = 0;
+	r[0].z = 0;
+
+	r[1].x = 1;
+	r[1].y = 0;
+	r[1].z = 0;
+
+	fread(tbb, HB(basis), sizeof(lapack_complex_double), fi); 
+	CalcBAND(vb);
+	CalcEigenTB(basis, tbb, w, v);
+
+	for(i=0; i<BAND; i++) {
+		fprintf(fo, "%4d", i);
+
+		for(j=0; j<basis; j++) {
+			p2up = 0;
+			p2dn = 0;
+
+			for(l=0; l<OBT; l++) {
+				pup = 0;
+				pdn = 0;
+
+				for(m=0; m<super; m++) {
+					pup += DOT(v[basis*(basis*i + j) + l + OBT*m], vb[i], g, r[m]);
+					pdn += DOT(v[basis*(basis*i + j) + l + OBT*(m+2)], vb[i], g, r[m]);
+				}
+				p2up += COMPLEX2(pup) / super;
+				p2dn += COMPLEX2(pdn) / super;
+			}
+			printf("%f\t%f\t%f\n", w[basis*i + j], p2up, p2dn);
+			
+			if(p2up > 0.1) {
+				fprintf(fo, "%12f", w[basis*i + j] * p2up);
+			}
+		}
+		fprintf(fo, "\n");
+		printf("\n");
+	}
+
+	fclose(fi);
+	fclose(fo);
 }
 
 int main(int argc, char *argv[]) {
-	if(argc != 2) {
-		printf("Usage : %s <type>\n", argv[0]);
+	if(argc != 3) {
+		printf("Usage : %s <type> <is_unfold>\n", argv[0]);
 		exit(1);
 	}
 
 	char *type = argv[1];
+	int is_unfold = atoi(argv[2]), super;
+	Vector q;
 
-	int basis = strstr(type, "f") ? 6 : 12;
-	char fk_name[32], fb_name[32];
-	Vector vk[K3], vb[BAND];
-	lapack_complex_double tbk[HK(K3, basis)], tbb[HB(BAND, basis)];
+	if(strstr(type, "f")) {
+		q.x = 0;
+		q.y = 0;
+		q.z = 0;
+	}
+	else if(strstr(type, "a")) {
+		super = 2;
+		q.x = M_PI;
+		q.y = 0;
+		q.z = 0;
+	}
+	else if(strstr(type, "c")) {
+		super = 2;
+		q.x = M_PI;
+		q.y = M_PI;
+		q.z = 0;
+	}
+	else if(strstr(type, "g")) {
+		super = 2;
+		q.x = M_PI;
+		q.y = M_PI;
+		q.z = M_PI;
+	}
 
-	sprintf(fk_name, "tb_%s_K%d.bin", type, K);
-	sprintf(fb_name, "tb_%s_BAND.bin", type);
+	if(is_unfold) {
+		Unfold(type, super, q);
+	}
+	else {
+		int basis = strstr(type, "f") ? BASIS1 : BASIS2;
+		char fk_name[32], fb_name[32];
+		Vector vk[K3], vb[BAND];
+		lapack_complex_double tbk[HK(basis)], tbb[HB(basis)];
 
-	CalcK(vk);
-	CalcBAND(vb);
 
-	CalcTB(fk_name, basis, K3, HK(K3, basis), vk, tbk);
-	CalcTB(fb_name, basis, BAND, HB(BAND, basis), vb, tbb);
-	MakeTB(type, basis, tbb);
+		sprintf(fk_name, "tb_%s_K%d.bin", type, K);
+		sprintf(fb_name, "tb_%s_BAND.bin", type);
+
+		CalcK(vk);
+		CalcBAND(vb);
+
+		CalcTB(fk_name, basis, K3, HK(basis), vk, q, tbk);
+		CalcTB(fb_name, basis, BAND, HB(basis), vb, q, tbb);
+		MakeTB(type, basis, tbb);
+	}
 
 	return 0;
 }

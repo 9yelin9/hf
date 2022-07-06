@@ -20,10 +20,14 @@ void InteractionF(Solution *s, lapack_complex_double *v_tmp) {
 	}
 
 	for(i=0; i<H(s->basis); i+=(s->basis+1)) {
-		j = (i / s->basis) % OBT;
-		v_tmp[i] += (s->U * s->n[j] + (s->U - 2.5*s->J) * n_diff[j]); 
-		v_tmp[i] -= (s->U * s->m[j] + (s->U - 2.5*s->J) * n_diff[j]) * pow(-1, 2*i/H(s->basis)); 
+		v_tmp[i] += N_TERM(i); 
 	}
+	for(i=0; i<OBT*(s->basis+1); i+=(s->basis+1)) {
+		v_tmp[i] -= M_TERM(i); 
+	}
+	for(i=OBT*(s->basis+1); i<2*OBT*(s->basis+1); i+=(s->basis+1)) {
+		v_tmp[i] += M_TERM(i); 
+	}	
 }
 
 void InteractionA(Solution *s, lapack_complex_double *v_tmp) {
@@ -43,13 +47,14 @@ void InteractionA(Solution *s, lapack_complex_double *v_tmp) {
 	}
 
 	for(i=0; i<H(s->basis); i+=(s->basis+1)) {
-		j = (i / (2*s->basis)) % OBT;
-		v_tmp[i] += (s->U * s->n[j] + (s->U - 2.5*s->J) * n_diff[j]); 
+		v_tmp[i] += (s->U * s->n[OBT_IDX(i)] + (s->U - 2.5*s->J) * n_diff[OBT_IDX(i)]); 
 	}
-	for(i=1; i<H(s->basis); i+=(s->basis+1)*2) {
-		j = (i / (2*s->basis)) % OBT;
-		v_tmp[i] -= (s->U * s->m[j] + (s->U - 2.5*s->J) * n_diff[j]) * pow(-1, 2*i/H(s->basis)); 
+	for(i=OBT; i<OBT*(s->basis+1); i+=(s->basis+1)) {
+		v_tmp[i] -= M_TERM(i); 
 	}
+	for(i=OBT + 2*OBT*(s->basis+1); i<4*OBT*(s->basis+1); i+=(s->basis+1)) {
+		v_tmp[i] += M_TERM(i); 
+	}	
 }
 
 void OccupationF(int basis, double fermi, double *w, lapack_complex_double *v, double *n, double *m, double *e) {
@@ -115,11 +120,11 @@ int main(int argc, char *argv[]) {
 	sprintf(s.runtime, "%d%d%d%d", tm->tm_mon+1, tm->tm_mday, tm->tm_hour, tm->tm_min); 
 
 	s.basis = strstr(s.type, "f") ? 6 : 12,
-	s.tbk = (lapack_complex_double*)malloc(HK(K3, s.basis) * sizeof(lapack_complex_double));
-	s.tbb = (lapack_complex_double*)malloc(HB(BAND, s.basis) * sizeof(lapack_complex_double));
+	s.tbk = (lapack_complex_double*)malloc(HK(s.basis) * sizeof(lapack_complex_double));
+	s.tbb = (lapack_complex_double*)malloc(HB(s.basis) * sizeof(lapack_complex_double));
 
 	ReadTB(s.type, s.basis, s.tbk, s.tbb);
-	CalcSolution(&s);
+	CalcSolution(&s, 0);
 
 	MakeBand(&s);
 	MakeDos(&s);

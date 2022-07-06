@@ -11,10 +11,15 @@ export LD_LIBRARY_PATH="/usr/lib:/usr/lib64:/usr/slib:/home/9yelin9/usr/lib:/hom
 t0=$(date +%s.%N)
 t0_string=$(date)
 
-./boo_tb f 0
-./boo_tb a 0
-./boo_tb c 0
-./boo_tb g 0
+JU=0.0
+SOC=0.0
+for n in `seq 0.1 0.1 5.9`
+do
+	for u in `seq 0 0.1 9.0`
+	do
+		./boo f $JU $SOC $n $u
+	done
+done
 
 t1=$(date +%s.%N)
 t1_string=$(date)

@@ -2,7 +2,7 @@
 
 #include "hf3.h" 
 
-void ReadTB(char *type, int basis, lapack_complex_double *tbk, lapack_complex_double *tbb) {
+void ReadTB(char *type, const int basis, lapack_complex_double *tbk, lapack_complex_double *tbb) {
 	FILE *fk, *fb;
 	char fk_name[32], fb_name[32];
 
@@ -18,14 +18,14 @@ void ReadTB(char *type, int basis, lapack_complex_double *tbk, lapack_complex_do
 		exit(1);
 	}
 
-	fread(tbk, HK(K3, basis), sizeof(lapack_complex_double), fk);
-	fread(tbb, HB(BAND, basis), sizeof(lapack_complex_double), fb);
+	fread(tbk, HK(basis), sizeof(lapack_complex_double), fk);
+	fread(tbb, HB(basis), sizeof(lapack_complex_double), fb);
 
 	fclose(fk);
 	fclose(fb);
 }
 
-Energy CalcEigen(Solution *s, const int k_num, lapack_complex_double *tb, double *w, lapack_complex_double *v) {
+Energy CalcEigen(Solution *s, int k_num, lapack_complex_double *tb, double *w, lapack_complex_double *v) {
 	Energy e = {
 		.min =  100,
 		.max = -100
@@ -42,6 +42,8 @@ Energy CalcEigen(Solution *s, const int k_num, lapack_complex_double *tb, double
 	Interaction = strstr(s->type, "f") ? InteractionF : InteractionA;
 
 	for(i=0; i<k_num; i++) {
+		memset(v_tmp, 0, sizeof(v_tmp));
+
 		for(j=0; j<H(s->basis); j++) {
 			v_tmp[j] = tb[H(s->basis)*i + j];
 		}
@@ -72,11 +74,16 @@ Energy CalcEigen(Solution *s, const int k_num, lapack_complex_double *tb, double
 	return e;
 }
 
-void CalcSolution(Solution *s) {
+void CalcSolution(Solution *s, int is_unfold) {
 	FILE *f;
 	char f_name[256];
 
-	sprintf(f_name, "output/K%d_JU%.2f_SOC%.2f/cvg_%s_N%.1f_U%.1f_%s.txt", K, s->JU, s->SOC, s->type, s->N, s->U, s->runtime);
+	if(!is_unfold) {
+		sprintf(f_name, "output/K%d_JU%.2f_SOC%.2f/cvg_%s_N%.1f_U%.1f_%s.txt", K, s->JU, s->SOC, s->type, s->N, s->U, s->runtime);
+	}
+	else {
+		sprintf(f_name, "output/K%d_JU%.2f_SOC%.2f_unfold/cvg_%s_N%.1f_U%.1f_%s.txt", K, s->JU, s->SOC, s->type, s->N, s->U, s->runtime);
+	}
 
 	if((f = fopen(f_name, "w")) == NULL) {
 		printf("%s fopen FAIL\n", f_name);
@@ -86,7 +93,7 @@ void CalcSolution(Solution *s) {
 	time_t t0 = time(NULL);
 
 	double w[K3*s->basis];
-	lapack_complex_double v[HK(K3, s->basis)];
+	lapack_complex_double v[HK(s->basis)];
 
 	int itr, i, is_cvg;
 	double fermi0, fermi1, e, n[OBT], m[OBT], n_total = 0, m_total = 0, cvg[OBT*3];
@@ -99,13 +106,13 @@ void CalcSolution(Solution *s) {
 		cvg[i] = 100;
 	}
 
-	for(itr=0; itr<30; itr++) {
-		fprintf(f, "%3d%12f%12f", itr+1, s->fermi, s->e);
-		for(i=0; i<OBT; i++) {
-			fprintf(f, "%12f%12f", s->n[i], s->m[i]);
-		}
-		fprintf(f, "%12f%12f\n", s->n_total, s->m_total);
-			
+	fprintf(f, "%3d%12f%12f", 0, s->fermi, s->e);
+	for(i=0; i<OBT; i++) {
+		fprintf(f, "%12f%12f", s->n[i], s->m[i]);
+	}
+	fprintf(f, "%12f%12f\n", s->n_total, s->m_total);
+
+	for(itr=0; itr<50; itr++) {
 		energy = CalcEigen(s, K3, s->tbk, w, v);
 		fermi0 = energy.min;
 		fermi1 = energy.max;
@@ -123,7 +130,7 @@ void CalcSolution(Solution *s) {
 				n_total += n[i];
 				m_total += m[i];
 			}
-			s->e /= K3;
+			s->e = e / K3;
 
 			if(fabs(n_total - s->N) < 1e-6) {
 				break;
@@ -146,6 +153,12 @@ void CalcSolution(Solution *s) {
 		s->n_total = n_total;
 		s->m_total = m_total;
 
+		fprintf(f, "%3d%12f%12f", itr+1, s->fermi, s->e);
+		for(i=0; i<OBT; i++) {
+			fprintf(f, "%12f%12f", s->n[i], s->m[i]);
+		}
+		fprintf(f, "%12f%12f\n", s->n_total, s->m_total);
+			
 		is_cvg = 0;
 		for(i=0; i<OBT; i++) {
 			cvg[3*(itr%3) + i] = m[i];
@@ -179,7 +192,7 @@ void MakeBand(Solution *s) {
 	time_t t0 = time(NULL);
 
 	double w[BAND*s->basis];
-	lapack_complex_double v[HB(BAND, s->basis)];
+	lapack_complex_double v[HB(s->basis)];
 
 	int i, j;
 
@@ -213,7 +226,7 @@ void MakeDos(Solution *s) {
 	time_t t0 = time(NULL);
 
 	double w[K3*s->basis];
-	lapack_complex_double v[HK(K3, s->basis)];
+	lapack_complex_double v[HK(s->basis)];
 
 	int itv, i, j;
 	double energy, dos[s->basis];
