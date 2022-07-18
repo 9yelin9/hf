@@ -1,0 +1,209 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.8	//
+BAND	boo/boo.h	/^const int BAND = 510;$/;"	v
+BAND	cao/cao.h	/^const int BAND = 800;$/;"	v
+BAND	unfold/unfold.c	3;"	d	file:
+BASIS	unfold/unfold.c	4;"	d	file:
+BASIS1	hf3.h	11;"	d
+BASIS2	hf3.h	12;"	d
+BOO_H	boo/boo.h	4;"	d
+CAO_H	cao/cao.h	4;"	d
+CC	boo/Makefile	/^CC = gcc$/;"	m
+CC	boo/input/Makefile	/^CC = gcc$/;"	m
+CC	cao/Makefile	/^CC = gcc$/;"	m
+CC	cao/input/Makefile	/^CC = gcc$/;"	m
+CC	unfold/Makefile	/^CC = gcc$/;"	m
+CFLAGS	boo/Makefile	/^CFLAGS = -g -O2 -Wall -mcmodel=medium -I$(USR_DIR)\/include\/lapacke -I$(OMP_DIR)\/include -lm -llapack -fopenmp$/;"	m
+CFLAGS	boo/input/Makefile	/^CFLAGS = -O2 -Wall -mcmodel=medium -I$(USR_DIR)\/include\/lapacke -I$(OMP_DIR)\/include -lm -llapack -fopenmp$/;"	m
+CFLAGS	cao/Makefile	/^CFLAGS = -g -O2 -Wall -mcmodel=medium -I$(USR_DIR)\/include\/lapacke -I$(OMP_DIR)\/include -lm -llapack -fopenmp$/;"	m
+CFLAGS	cao/input/Makefile	/^CFLAGS = -g -O2 -Wall -mcmodel=medium -I$(USR_DIR)\/include\/lapacke -I$(OMP_DIR)\/include -lm -llapack -fopenmp$/;"	m
+CFLAGS	unfold/Makefile	/^CFLAGS = -g -O2 -Wall -mcmodel=medium -I$(USR_DIR)\/include\/lapacke -I$(OMP_DIR)\/include -lm -llapack -fopenmp$/;"	m
+COMPLEX2	hf3.h	19;"	d
+COMPLEX2	unfold/unfold.c	8;"	d	file:
+CalcBAND	cao/input/cao_tb.c	/^void CalcBAND(Vector *v) {$/;"	f
+CalcEigen	hf3.c	/^Energy CalcEigen(Solution *s, int k_num, lapack_complex_double *tb, double *w, lapack_complex_double *v) {$/;"	f
+CalcEigenTB	hf3_tb.c	/^void CalcEigenTB(char *type, double *w, lapack_complex_double *v) {$/;"	f
+CalcK	unfold/unfold.c	/^void CalcK(double *k) {$/;"	f
+CalcPathB	boo/input/boo_tb.c	/^void CalcPathB() {$/;"	f
+CalcPathK	hf3_tb.c	/^void CalcPathK() {$/;"	f
+CalcSolution	hf3.c	/^void CalcSolution(Solution *s, int is_unfold) {$/;"	f
+ConditionA	boo/input/boo_tb.c	/^int ConditionA(int i, int j, int k) { return i; }$/;"	f
+ConditionC	boo/input/boo_tb.c	/^int ConditionC(int i, int j, int k) { return i + j; }$/;"	f
+ConditionG	boo/input/boo_tb.c	/^int ConditionG(int i, int j, int k) { return i + j - k; }$/;"	f
+DOT	unfold/unfold.c	9;"	d	file:
+DOT_A	boo/input/boo_tb.c	4;"	d	file:
+DOT_F	boo/input/boo_tb.c	3;"	d	file:
+DOT_UNFOLD	hf3.h	14;"	d
+Draw	cao/input/input.py	/^	from Draw import Draw$/;"	i
+Draw	pyhf3/draw.py	/^class Draw:$/;"	c
+DrawBand	pyhf3/draw.py	/^	def DrawBand(self, N, U, ax):$/;"	m	class:Draw
+DrawBandDos	pyhf3/draw.py	/^	def DrawBandDos(self, N, U):$/;"	m	class:Draw
+DrawDos	pyhf3/draw.py	/^	def DrawDos(self, N, U, ax, e_min=None, e_max=None):$/;"	m	class:Draw
+DrawTB	pyhf3/draw.py	/^	def DrawTB(self):$/;"	m	class:Draw
+Energy	hf3.h	/^typedef struct Energy {$/;"	s
+Energy	hf3.h	/^} Energy;$/;"	t	typeref:struct:Energy
+Extract	pyhf3/wan2lat.py	/^	def Extract(self):$/;"	m	class:Wan2Lat
+FourierA	boo/input/boo_tb.c	/^void FourierA(char *type, int path_num, Vector path, Vector q, lapack_complex_double *tb) {$/;"	f
+FourierA	cao/input/cao_tb.c	/^void FourierA(FILE *f, const int num, const int basis, Vector v, Vector q, lapack_complex_double *tb) {$/;"	f
+FourierF	boo/input/boo_tb.c	/^void FourierF(char *type, int path_num, Vector path, Vector q, lapack_complex_double *tb) {$/;"	f
+FourierF	cao/input/cao_tb.c	/^void FourierF(FILE *f, const int num, const int basis, Vector v, Vector q, lapack_complex_double *tb) {$/;"	f
+FourierSubA	boo/input/boo_tb.c	/^void FourierSubA(char *type, int path_num, Vector path, Vector q, lapack_complex_double *tb) {$/;"	f
+GREEN	hf3.h	13;"	d
+H	hf3.h	16;"	d
+H	unfold/unfold.c	6;"	d	file:
+HB	hf3.h	18;"	d
+HF3_H	hf3.h	4;"	d
+HK	hf3.h	17;"	d
+InteractionA	boo/boo.c	/^void InteractionA(Solution *s, lapack_complex_double *v_tmp) {$/;"	f
+InteractionA	boo/boo_old.c	/^void InteractionA(Solution *s, lapack_complex_double *v_tmp) {$/;"	f
+InteractionA	cao/cao.c	/^void InteractionA(Solution *s, lapack_complex_double *v_tmp) {$/;"	f
+InteractionF	boo/boo.c	/^void InteractionF(Solution *s, lapack_complex_double *v_tmp) {$/;"	f
+InteractionF	boo/boo_old.c	/^void InteractionF(Solution *s, lapack_complex_double *v_tmp) {$/;"	f
+InteractionF	cao/cao.c	/^void InteractionF(Solution *s, lapack_complex_double *v_tmp) {$/;"	f
+InteractionSubA	boo/boo.c	/^void InteractionSubA(Solution *s, lapack_complex_double *v_tmp) {$/;"	f
+J	hf3.h	/^	double J; \/\/ Hund coupling$/;"	m	struct:SelfConsistentSolution
+JU	hf3.h	/^	double JU; \/\/ Hund coupling \/ Coulomb interaction$/;"	m	struct:SelfConsistentSolution
+K	boo/boo.h	/^const int K = 16;$/;"	v
+K	cao/cao.h	/^const int K = 16;$/;"	v
+K3	boo/boo.h	/^const int K3 = 16*16*16;$/;"	v
+K3	cao/cao.h	/^const int K3 = 16*16*16;$/;"	v
+LDFLAGS	boo/Makefile	/^LDFLAGS = -mcmodel=medium -L$(USR_DIR)\/lib64 -L$(OMP_DIR)\/lib$/;"	m
+LDFLAGS	boo/input/Makefile	/^LDFLAGS = -mcmodel=medium -L$(USR_DIR)\/lib64 -L$(OMP_DIR)\/lib$/;"	m
+LDFLAGS	cao/Makefile	/^LDFLAGS = -mcmodel=medium -L$(USR_DIR)\/lib64 -L$(OMP_DIR)\/lib$/;"	m
+LDFLAGS	cao/input/Makefile	/^LDFLAGS = -mcmodel=medium -L$(USR_DIR)\/lib64 -L$(OMP_DIR)\/lib$/;"	m
+LDFLAGS	unfold/Makefile	/^LDFLAGS = -mcmodel=medium -L$(USR_DIR)\/lib64 -L$(OMP_DIR)\/lib$/;"	m
+LINKS	boo/Makefile	/^LINKS = -lm -llapack -fopenmp$/;"	m
+LINKS	boo/input/Makefile	/^LINKS = -lm -llapack -fopenmp$/;"	m
+LINKS	cao/Makefile	/^LINKS = -lm -llapack -fopenmp$/;"	m
+LINKS	cao/input/Makefile	/^LINKS = -lm -llapack -fopenmp$/;"	m
+LINKS	unfold/Makefile	/^LINKS = -lm -llapack -fopenmp$/;"	m
+MakeBand	hf3.c	/^void MakeBand(Solution *s, int is_unfold) {$/;"	f
+MakeDos	hf3.c	/^void MakeDos(Solution *s, int is_unfold) {$/;"	f
+MakeFold	unfold/unfold.c	/^void MakeFold(double *w) {$/;"	f
+MakeTB	hf3_tb.c	/^void MakeTB(char *type, char *fs, Vector *path, Vector q) {$/;"	f
+MakeUnfold	unfold/unfold.c	/^void MakeUnfold(double *k, double *w, lapack_complex_double *v) {$/;"	f
+N	hf3.h	/^	double N; \/\/ occupation$/;"	m	struct:SelfConsistentSolution
+OBJS	boo/Makefile	/^OBJS = ..\/hf3.o boo.o $/;"	m
+OBJS	boo/input/Makefile	/^OBJS = ..\/..\/hf3_tb.o boo_tb.o $/;"	m
+OBJS	cao/Makefile	/^OBJS = ..\/hf3.o cao.o $/;"	m
+OBJS	cao/input/Makefile	/^OBJS = ..\/..\/hf3_tb.o cao_tb.o $/;"	m
+OBJS	unfold/Makefile	/^OBJS = unfold.o $/;"	m
+OBT	hf3.h	9;"	d
+OBT_IDX	boo/boo.c	3;"	d	file:
+OMP_DIR	boo/Makefile	/^OMP_DIR = \/opt\/mpi\/gcc-4.8.5\/openmpi-4.1.0\/$/;"	m
+OMP_DIR	boo/input/Makefile	/^OMP_DIR = \/opt\/mpi\/gcc-4.8.5\/openmpi-4.1.0\/$/;"	m
+OMP_DIR	cao/Makefile	/^OMP_DIR = \/opt\/mpi\/gcc-4.8.5\/openmpi-4.1.0\/$/;"	m
+OMP_DIR	cao/input/Makefile	/^OMP_DIR = \/opt\/mpi\/gcc-4.8.5\/openmpi-4.1.0\/$/;"	m
+OMP_DIR	unfold/Makefile	/^OMP_DIR = \/opt\/mpi\/gcc-4.8.5\/openmpi-4.1.0\/$/;"	m
+OMP_THREAD	hf3.h	7;"	d
+OccupationA	boo/boo.c	/^void OccupationA(double fermi, double *w, lapack_complex_double *v, double *n, double *m, double *e) {$/;"	f
+OccupationA	boo/boo_old.c	/^void OccupationA(int basis, double fermi, double *w, lapack_complex_double *v, double *n, double *m, double *e) {$/;"	f
+OccupationA	cao/cao.c	/^void OccupationA(int basis, double fermi, double *w, lapack_complex_double *v, double *n, double *m, double *e) {$/;"	f
+OccupationF	boo/boo.c	/^void OccupationF(double fermi, double *w, lapack_complex_double *v, double *n, double *m, double *e) {$/;"	f
+OccupationF	boo/boo_old.c	/^void OccupationF(int basis, double fermi, double *w, lapack_complex_double *v, double *n, double *m, double *e) {$/;"	f
+OccupationF	cao/cao.c	/^void OccupationF(int basis, double fermi, double *w, lapack_complex_double *v, double *n, double *m, double *e) {$/;"	f
+OccupationSubA	boo/boo.c	/^void OccupationSubA(double fermi, double *w, lapack_complex_double *v, double *n, double *m, double *e) {$/;"	f
+PRM	unfold/unfold.c	5;"	d	file:
+RM	boo/Makefile	/^RM = rm -rf$/;"	m
+RM	boo/input/Makefile	/^RM = rm -rf$/;"	m
+RM	cao/Makefile	/^RM = rm -rf$/;"	m
+RM	cao/input/Makefile	/^RM = rm -rf$/;"	m
+RM	unfold/Makefile	/^RM = rm -rf$/;"	m
+ReadPath	hf3_tb.c	/^void ReadPath(Vector *path_k, Vector *path_b) {$/;"	f
+ReadTB	hf3.c	/^void ReadTB(Solution *s) {$/;"	f
+SOC	hf3.h	/^	double SOC; \/\/ spin-orbit coupling$/;"	m	struct:SelfConsistentSolution
+SUPER	hf3.h	10;"	d
+SelfConsistentSolution	hf3.h	/^typedef struct SelfConsistentSolution {$/;"	s
+SeperateLat	pyhf3/wan2lat.py	/^	def SeperateLat(self):$/;"	m	class:Wan2Lat
+Solution	hf3.h	/^} Solution;$/;"	t	typeref:struct:SelfConsistentSolution
+TARGET	boo/Makefile	/^TARGET = boo$/;"	m
+TARGET	boo/input/Makefile	/^TARGET = boo_tb$/;"	m
+TARGET	cao/Makefile	/^TARGET = cao$/;"	m
+TARGET	cao/input/Makefile	/^TARGET = cao_tb$/;"	m
+TARGET	unfold/Makefile	/^TARGET = unfold$/;"	m
+TightBinding1D	unfold/unfold.c	/^void TightBinding1D(double *k, double *w, lapack_complex_double *v) {$/;"	f
+U	hf3.h	/^	double U; \/\/ Coulomb interaction$/;"	m	struct:SelfConsistentSolution
+USE_MATH_DEFINES	hf3.h	6;"	d
+USE_MATH_DEFINES	unfold/unfold.c	1;"	d	file:
+USR_DIR	boo/Makefile	/^USR_DIR = \/home\/9yelin9\/usr$/;"	m
+USR_DIR	boo/input/Makefile	/^USR_DIR = \/home\/9yelin9\/usr$/;"	m
+USR_DIR	cao/Makefile	/^USR_DIR = \/home\/9yelin9\/usr$/;"	m
+USR_DIR	cao/input/Makefile	/^USR_DIR = \/home\/9yelin9\/usr$/;"	m
+USR_DIR	unfold/Makefile	/^USR_DIR = \/home\/9yelin9\/usr$/;"	m
+Unfold	boo/input/boo_tb.c	/^void Unfold(char *type, Vector *path, Vector q) {$/;"	f
+Vector	hf3.h	/^typedef struct Vector {$/;"	s
+Vector	hf3.h	/^} Vector;$/;"	t	typeref:struct:Vector
+Wan2Lat	cao/input/input.py	/^	from Wan2Lat import Wan2Lat$/;"	i
+Wan2Lat	pyhf3/wan2lat.py	/^class Wan2Lat:$/;"	c
+__init__	pyhf3/draw.py	/^	def __init__(self, type='f', JU=0.0, SOC=0.0, path=[], path_label=[]):$/;"	m	class:Draw
+argparse	boo/boo.py	/^import argparse$/;"	i
+argparse	cao/cao.py	/^import argparse$/;"	i
+argparse	cao/input/input.py	/^import argparse$/;"	i
+argparse	pyhf3/draw.py	/^import argparse$/;"	i
+args	boo/boo.py	/^args = parser.parse_args()$/;"	v
+args	cao/cao.py	/^args = parser.parse_args()$/;"	v
+args	cao/input/input.py	/^args = parser.parse_args()$/;"	v
+basis	hf3.h	/^	int basis; \/\/ num of bases$/;"	m	struct:SelfConsistentSolution
+d	boo/boo.py	/^d = draw.Draw(args.values[0], args.values[1], args.values[2], path, path_label)$/;"	v
+d	cao/cao.py	/^d = draw.Draw(args.values[0], args.values[1], args.values[2], path, path_label)$/;"	v
+d	cao/input/input.py	/^	d = Draw(type=args.draw)$/;"	v
+draw	boo/boo.py	/^from pyhf3 import draw$/;"	i
+draw	cao/cao.py	/^from pyhf3 import draw$/;"	i
+e	hf3.h	/^	double e; \/\/ energy$/;"	m	struct:SelfConsistentSolution
+fermi	hf3.h	/^	double fermi; \/\/ Fermi level	$/;"	m	struct:SelfConsistentSolution
+m	hf3.h	/^	double m[OBT]; \/\/ magnetization per orbital$/;"	m	struct:SelfConsistentSolution
+m_total	hf3.h	/^	double m_total; \/\/ total magnetization$/;"	m	struct:SelfConsistentSolution
+main	boo/boo.c	/^int main(int argc, char *argv[]) {$/;"	f
+main	boo/boo_old.c	/^int main(int argc, char *argv[]) {$/;"	f
+main	boo/input/boo_tb.c	/^int main(int argc, char *argv[]) {$/;"	f
+main	cao/cao.c	/^int main(int argc, char *argv[]) {$/;"	f
+main	cao/input/cao_tb.c	/^int main(int argc, char *argv[]) {$/;"	f
+main	unfold/unfold.c	/^int main() {$/;"	f
+matplotlib	boo/boo.py	/^import matplotlib.pyplot as plt$/;"	i
+matplotlib	cao/cao.py	/^import matplotlib.pyplot as plt$/;"	i
+matplotlib	cao/input/input.py	/^import matplotlib.pyplot as plt$/;"	i
+matplotlib	pyhf3/draw.py	/^import matplotlib.pyplot as plt$/;"	i
+max	hf3.h	/^	double max;$/;"	m	struct:Energy
+min	hf3.h	/^	double min;$/;"	m	struct:Energy
+n	hf3.h	/^	double n[OBT]; \/\/ occupation per orbital$/;"	m	struct:SelfConsistentSolution
+n_total	hf3.h	/^	double n_total; \/\/ total occupation$/;"	m	struct:SelfConsistentSolution
+np	boo/boo.py	/^import numpy as np$/;"	i
+np	cao/cao.py	/^import numpy as np$/;"	i
+np	cao/input/input.py	/^import numpy as np$/;"	i
+np	pyhf3/draw.py	/^import numpy as np$/;"	i
+os	boo/boo.py	/^import os$/;"	i
+os	cao/cao.py	/^import os$/;"	i
+os	pyhf3/draw.py	/^import os$/;"	i
+parser	boo/boo.py	/^parser = argparse.ArgumentParser()$/;"	v
+parser	cao/cao.py	/^parser = argparse.ArgumentParser()$/;"	v
+parser	cao/input/input.py	/^parser = argparse.ArgumentParser()$/;"	v
+path	boo/boo.py	/^path = [0, 100, 200, 340, 510]$/;"	v
+path	cao/cao.py	/^path = [0, 150, 350, 400, 500, 575, 800]$/;"	v
+path_label	boo/boo.py	/^path_label = ['G', 'X', 'M', 'G', 'R']$/;"	v
+path_label	cao/cao.py	/^path_label = ['L', 'G', 'X', 'W', 'L', 'K', 'G']$/;"	v
+plt	boo/boo.py	/^import matplotlib.pyplot as plt$/;"	i
+plt	cao/cao.py	/^import matplotlib.pyplot as plt$/;"	i
+plt	cao/input/input.py	/^import matplotlib.pyplot as plt$/;"	i
+plt	pyhf3/draw.py	/^import matplotlib.pyplot as plt$/;"	i
+re	boo/boo.py	/^import re$/;"	i
+re	cao/cao.py	/^import re$/;"	i
+re	cao/input/input.py	/^import re$/;"	i
+re	pyhf3/draw.py	/^import re$/;"	i
+re	pyhf3/wan2lat.py	/^import re$/;"	i
+runtime	hf3.h	/^	char runtime[16]; \/\/ runtime$/;"	m	struct:SelfConsistentSolution
+sys	cao/input/input.py	/^import sys$/;"	i
+tbb	hf3.h	/^	lapack_complex_double *tbb; \/\/ tight-binding Hamiltonian in band path$/;"	m	struct:SelfConsistentSolution
+tbk	hf3.h	/^	lapack_complex_double *tbk; \/\/ tight-binding Hamiltonian in k-space$/;"	m	struct:SelfConsistentSolution
+type	hf3.h	/^	char *type; \/\/ type of magnetic structure$/;"	m	struct:SelfConsistentSolution
+w	boo/boo.py	/^w = wan2lat.Wan2Lat()$/;"	v
+w	cao/cao.py	/^w = wan2lat.Wan2Lat()$/;"	v
+w	cao/input/input.py	/^	w = Wan2Lat()$/;"	v
+wan2lat	boo/boo.py	/^from pyhf3 import wan2lat$/;"	i
+wan2lat	cao/cao.py	/^from pyhf3 import wan2lat$/;"	i
+x	hf3.h	/^	double x;$/;"	m	struct:Vector
+y	hf3.h	/^	double y;$/;"	m	struct:Vector
+z	hf3.h	/^	double z;$/;"	m	struct:Vector

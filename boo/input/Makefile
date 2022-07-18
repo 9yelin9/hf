@@ -2,8 +2,8 @@ CC = gcc
 RM = rm -rf
 USR_DIR = /home/9yelin9/usr
 OMP_DIR = /opt/mpi/gcc-4.8.5/openmpi-4.1.0/
-#CFLAGS = -O2 -Wall -mcmodel=medium -I$(USR_DIR)/include/lapacke -I$(OMP_DIR)/include -lm -llapack -fopenmp
-CFLAGS = -g -O2 -Wall -mcmodel=medium -I$(USR_DIR)/include/lapacke -I$(OMP_DIR)/include -lm -llapack -fopenmp
+CFLAGS = -O2 -Wall -mcmodel=medium -I$(USR_DIR)/include/lapacke -I$(OMP_DIR)/include -lm -llapack -fopenmp
+#CFLAGS = -g -O2 -Wall -mcmodel=medium -I$(USR_DIR)/include/lapacke -I$(OMP_DIR)/include -lm -llapack -fopenmp
 LDFLAGS = -mcmodel=medium -L$(USR_DIR)/lib64 -L$(OMP_DIR)/lib
 LINKS = -lm -llapack -fopenmp
 OBJS = ../../hf3_tb.o boo_tb.o 

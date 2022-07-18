@@ -2,24 +2,24 @@
 
 #include "hf3.h" 
 
-void ReadTB(char *type, const int basis, lapack_complex_double *tbk, lapack_complex_double *tbb) {
+void ReadTB(Solution *s) {
 	FILE *fk, *fb;
-	char fk_name[32], fb_name[32];
+	char fks[32], fbs[32];
 
-	sprintf(fk_name, "input/tb_%s_K%d.bin", type, K);
-	sprintf(fb_name, "input/tb_%s_BAND.bin", type);
+	sprintf(fks, "input/tbk%d_%s.bin", K, s->type);
+	sprintf(fbs, "input/tbb_%s.bin", s->type);
 
-	if((fk = fopen(fk_name, "rb")) == NULL) {
-		printf("%s fopen FAIL\n", fk_name);
+	if((fk = fopen(fks, "rb")) == NULL) {
+		printf("%s fopen FAIL\n", fks);
 		exit(1);
 	}
-	if((fb = fopen(fb_name, "rb")) == NULL) {
-		printf("%s fopen FAIL\n", fb_name);
+	if((fb = fopen(fbs, "rb")) == NULL) {
+		printf("%s fopen FAIL\n", fbs);
 		exit(1);
 	}
 
-	fread(tbk, HK(basis), sizeof(lapack_complex_double), fk);
-	fread(tbb, HB(basis), sizeof(lapack_complex_double), fb);
+	fread(s->tbk, HK(s->basis), sizeof(lapack_complex_double), fk);
+	fread(s->tbb, HB(s->basis), sizeof(lapack_complex_double), fb);
 
 	fclose(fk);
 	fclose(fb);
@@ -39,7 +39,9 @@ Energy CalcEigen(Solution *s, int k_num, lapack_complex_double *tb, double *w, l
 	int i, j;
 	void (*Interaction)(Solution*, lapack_complex_double*);
 
-	Interaction = strstr(s->type, "f") ? InteractionF : InteractionA;
+	if(strstr(s->type, "f")) Interaction = InteractionF;
+	else if(strstr(s->type, "s")) Interaction = InteractionSubA;
+	else Interaction = InteractionA;
 
 	for(i=0; i<k_num; i++) {
 		memset(v_tmp, 0, sizeof(v_tmp));
@@ -76,17 +78,13 @@ Energy CalcEigen(Solution *s, int k_num, lapack_complex_double *tb, double *w, l
 
 void CalcSolution(Solution *s, int is_unfold) {
 	FILE *f;
-	char f_name[256];
+	char fs[256];
 
-	if(!is_unfold) {
-		sprintf(f_name, "output/K%d_JU%.2f_SOC%.2f/cvg_%s_N%.1f_U%.1f_%s.txt", K, s->JU, s->SOC, s->type, s->N, s->U, s->runtime);
-	}
-	else {
-		sprintf(f_name, "output/K%d_JU%.2f_SOC%.2f_unfold/cvg_%s_N%.1f_U%.1f_%s.txt", K, s->JU, s->SOC, s->type, s->N, s->U, s->runtime);
-	}
+	if(!is_unfold) sprintf(fs, "output/K%d_JU%.2f_SOC%.2f/cvg_%s_N%.1f_U%.1f_%s.txt", K, s->JU, s->SOC, s->type, s->N, s->U, s->runtime);
+	else sprintf(fs, "output/K%d_JU%.2f_SOC%.2f_unfold/cvg_%s_N%.1f_U%.1f_%s.txt", K, s->JU, s->SOC, s->type, s->N, s->U, s->runtime);
 
-	if((f = fopen(f_name, "w")) == NULL) {
-		printf("%s fopen FAIL\n", f_name);
+	if((f = fopen(fs, "w")) == NULL) {
+		printf("%s fopen FAIL\n", fs);
 		exit(1);
 	}
 
@@ -97,19 +95,17 @@ void CalcSolution(Solution *s, int is_unfold) {
 
 	int itr, i, is_cvg;
 	double fermi0, fermi1, e, n[OBT], m[OBT], n_total = 0, m_total = 0, cvg[OBT*3];
-	void (*Occupation)(int, double, double*, lapack_complex_double*, double*, double*, double*);
+	void (*Occupation)(double, double*, lapack_complex_double*, double*, double*, double*);
 	Energy energy;
 
-	Occupation = strstr(s->type, "f") ? OccupationF : OccupationA;
+	if(strstr(s->type, "f")) Occupation = OccupationF;
+	else if(strstr(s->type, "s")) Occupation = OccupationSubA;
+	else Occupation = OccupationA;
 
-	for(i=0; i<OBT*3; i++) {
-		cvg[i] = 100;
-	}
+	for(i=0; i<OBT*3; i++) cvg[i] = 100;
 
 	fprintf(f, "%3d%12f%12f", 0, s->fermi, s->e);
-	for(i=0; i<OBT; i++) {
-		fprintf(f, "%12f%12f", s->n[i], s->m[i]);
-	}
+	for(i=0; i<OBT; i++) fprintf(f, "%12f%12f", s->n[i], s->m[i]);
 	fprintf(f, "%12f%12f\n", s->n_total, s->m_total);
 
 	for(itr=0; itr<50; itr++) {
@@ -122,7 +118,7 @@ void CalcSolution(Solution *s, int is_unfold) {
 			n_total = 0;
 			m_total = 0;
 
-			Occupation(s->basis, s->fermi, w, v, n, m, &e);
+			Occupation(s->fermi, w, v, n, m, &e);
 		
 			for(i=0; i<OBT; i++) {	
 				n[i] /= K3;
@@ -132,16 +128,10 @@ void CalcSolution(Solution *s, int is_unfold) {
 			}
 			s->e = e / K3;
 
-			if(fabs(n_total - s->N) < 1e-6) {
-				break;
-			}
+			if(fabs(n_total - s->N) < 1e-6) break;
 			else {
-				if(n_total < s->N) {
-					fermi0 = s->fermi;
-				}
-				else {
-					fermi1 = s->fermi;
-				}
+				if(n_total < s->N) fermi0 = s->fermi;
+				else fermi1 = s->fermi;
 				s->fermi = 0.5 * (fermi0 + fermi1);
 			}
 		}
@@ -154,38 +144,33 @@ void CalcSolution(Solution *s, int is_unfold) {
 		s->m_total = m_total;
 
 		fprintf(f, "%3d%12f%12f", itr+1, s->fermi, s->e);
-		for(i=0; i<OBT; i++) {
-			fprintf(f, "%12f%12f", s->n[i], s->m[i]);
-		}
+		for(i=0; i<OBT; i++) fprintf(f, "%12f%12f", s->n[i], s->m[i]);
 		fprintf(f, "%12f%12f\n", s->n_total, s->m_total);
 			
 		is_cvg = 0;
 		for(i=0; i<OBT; i++) {
 			cvg[3*(itr%3) + i] = m[i];
-			if(fabs((cvg[3*0 + i] + cvg[3*1 + i] + cvg[3*2 + i])/3 - m[i]) < 1e-3) {
-				is_cvg++;
-			}
+			if(fabs((cvg[3*0 + i] + cvg[3*1 + i] + cvg[3*2 + i])/3 - m[i]) < 1e-3) is_cvg++;
 		}
 
-		if(is_cvg == 3) {
-			break;
-		}
+		if(is_cvg == 3) break;
 	}
 
 	fclose(f);
 
 	time_t t1 = time(NULL);
-	printf("%s(%s) : %lds\n", __func__, f_name, t1 - t0);
+	printf("%s(%s) : %lds\n", __func__, fs, t1 - t0);
 }
 
-void MakeBand(Solution *s) {
+void MakeBand(Solution *s, int is_unfold) {
 	FILE *f;
-	char f_name[256];
+	char fs[256];
 
-	sprintf(f_name, "output/K%d_JU%.2f_SOC%.2f/band_%s_N%.1f_U%.1f_n%f_m%f_fermi%f_e%f_%s.txt", K, s->JU, s->SOC, s->type, s->N, s->U, s->n_total, s->m_total, s->fermi, s->e, s->runtime);
+	if(!is_unfold) sprintf(fs, "output/K%d_JU%.2f_SOC%.2f/band_%s_N%.1f_U%.1f_n%f_m%f_fermi%f_e%f_%s.txt", K, s->JU, s->SOC, s->type, s->N, s->U, s->n_total, s->m_total, s->fermi, s->e, s->runtime);
+	else sprintf(fs, "output/K%d_JU%.2f_SOC%.2f_unfold/band_%s_N%.1f_U%.1f_n%f_m%f_fermi%f_e%f_%s.txt", K, s->JU, s->SOC, s->type, s->N, s->U, s->n_total, s->m_total, s->fermi, s->e, s->runtime);
 
-	if((f = fopen(f_name, "w")) == NULL) {
-		printf("%s fopen FAIL\n", f_name);
+	if((f = fopen(fs, "w")) == NULL) {
+		printf("%s fopen FAIL\n", fs);
 		exit(1);
 	}
 
@@ -197,29 +182,69 @@ void MakeBand(Solution *s) {
 	int i, j;
 
 	CalcEigen(s, BAND, s->tbb, w, v);
-	
-	for(i=0; i<BAND; i++) {
-		fprintf(f, "%4d", i);
-		for(j=0; j<s->basis; j++) {
-			fprintf(f, "%12f", w[s->basis*i + j]);
+
+	if(!is_unfold) {
+		for(i=0; i<BAND; i++) {
+			fprintf(f, "%4d", i);
+			for(j=0; j<s->basis; j++) {
+				fprintf(f, "%12f", w[s->basis*i + j]);
+			}
+			fprintf(f, "\n");
 		}
-		fprintf(f, "\n");
+	}
+	else {
+		FILE *f_path;
+		
+		if((f_path = fopen("input/path_b.bin", "rb")) == NULL) {
+			printf("path_b.bin fopen FAIL\n");
+			exit(1);
+		}
+
+		int k, m, n;
+		double p2;
+		Vector path[BAND], r[SUPER] = {{1, 0, 0}, {0, 0, 0}};	
+		lapack_complex_double p, exp;
+
+		fread(path, sizeof(path), 1, f_path);
+		fclose(f_path);
+		
+		for(i=0; i<BAND; i++) {
+			fprintf(f, "%4d", i);
+
+			for(j=0; j<BASIS2; j++) {
+				p2 = 0;
+				for(k=0; k<OBT; k++) {
+					for(m=0; m<2; m++) {
+						p = 0;
+						for(n=0; n<SUPER; n++) {
+							exp = cos(DOT_UNFOLD) - sin(DOT_UNFOLD) * I;
+							p += v[BASIS2*(BASIS2*i + j) + OBT*(2*m + n) + k] * exp;
+						}		
+						p2 += COMPLEX2(p) / SUPER;
+					}
+				}
+
+				if(p2 > 0.5) fprintf(f, "%12f", w[BASIS2*i + j]);
+			}
+			fprintf(f, "\n");
+		}
 	}
 
 	fclose(f);
 
 	time_t t1 = time(NULL);
-	printf("%s(%s) : %lds\n", __func__, f_name, t1 - t0);
+	printf("%s(%s) : %lds\n", __func__, fs, t1 - t0);
 }
 
-void MakeDos(Solution *s) {
+void MakeDos(Solution *s, int is_unfold) {
 	FILE *f;
-	char f_name[256];
+	char fs[256];
 
-	sprintf(f_name, "output/K%d_JU%.2f_SOC%.2f/dos_%s_N%.1f_U%.1f_n%f_m%f_fermi%f_e%f_%s.txt", K, s->JU, s->SOC, s->type, s->N, s->U, s->n_total, s->m_total, s->fermi, s->e, s->runtime);
+	if(!is_unfold) sprintf(fs, "output/K%d_JU%.2f_SOC%.2f/dos_%s_N%.1f_U%.1f_n%f_m%f_fermi%f_e%f_%s.txt", K, s->JU, s->SOC, s->type, s->N, s->U, s->n_total, s->m_total, s->fermi, s->e, s->runtime);
+	else sprintf(fs, "output/K%d_JU%.2f_SOC%.2f_unfold/dos_%s_N%.1f_U%.1f_n%f_m%f_fermi%f_e%f_%s.txt", K, s->JU, s->SOC, s->type, s->N, s->U, s->n_total, s->m_total, s->fermi, s->e, s->runtime);
 
-	if((f = fopen(f_name, "w")) == NULL) {
-		printf("%s fopen FAIL\n", f_name);
+	if((f = fopen(fs, "w")) == NULL) {
+		printf("%s fopen FAIL\n", fs);
 		exit(1);
 	}
 
@@ -243,7 +268,7 @@ void MakeDos(Solution *s) {
 
 		for(i=0; i<K3*s->basis; i++) {
 			for(j=0; j<s->basis; j++) {
-				dos[j] += GREEN(energy, w[i]) * COMPLEX2(v[s->basis*i + j]);
+				dos[j] += GREEN * COMPLEX2(v[s->basis*i + j]);
 			}
 		}
 
@@ -257,5 +282,5 @@ void MakeDos(Solution *s) {
 	fclose(f);
 
 	time_t t1 = time(NULL);
-	printf("%s(%s) : %lds\n", __func__, f_name, t1 - t0);
+	printf("%s(%s) : %lds\n", __func__, fs, t1 - t0);
 }

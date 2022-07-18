@@ -15,7 +15,7 @@ JU=0.0
 SOC=0.0
 for n in `seq 0.1 0.1 5.9`
 do
-	for u in `seq 0 0.1 9.0`
+	for u in `seq 0 1 9`
 	do
 		./boo f $JU $SOC $n $u
 	done

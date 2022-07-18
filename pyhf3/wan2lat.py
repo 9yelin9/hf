@@ -17,3 +17,23 @@ class Wan2Lat:
 
 		wan.close()
 		lat.close()
+
+	def SeperateLat(self):
+		lat = open('input/lattice.txt', 'r')
+		onsite = open('input/lattice_onsite.txt', 'w')
+		super = open('input/lattice_super.txt', 'w')
+		remain = open('input/lattice_remain.txt', 'w')
+
+		pat_onsite = '\s+0\s+0\s+0\s+'
+		pat_super = '\s+1\s+0\s+0\s+'
+
+		for line in lat:
+			if re.match(pat_onsite, line): onsite.write(line)
+			elif re.match(pat_super, line): super.write(line)
+			else: remain.write(line)
+
+		lat.close()
+		onsite.close()
+		super.close()
+		remain.close()
+		

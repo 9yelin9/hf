@@ -2,50 +2,70 @@
 
 #include "hf3.h" 
 
-void CalcK(Vector *v) {
-	int i;
+void ReadPath(Vector *path_k, Vector *path_b) {
+	FILE *fk, *fb;
+	char fks[32], fbs[32];
 
-	for(i=0; i<K3; i++) {
-		v[i].x = -M_PI + 2*M_PI * (i / (K*K)) / K;
-		v[i].y = -M_PI + 2*M_PI * ((i / K) % K) / K;
-		v[i].z = -M_PI + 2*M_PI * (i % K) / K;
+	sprintf(fks, "path_k%d.bin", K);
+	sprintf(fbs, "path_b.bin");
+
+	if((fk = fopen(fks, "rb")) == NULL) {
+		printf("%s fopen FAIL\n", fks);
+		exit(1);
 	}
-}	
-
-void CalcTB(char *f_name, const int basis, int k_num, int tb_size, Vector *v, Vector q, lapack_complex_double *tb) {
-	FILE *f;
-
-	if((f = fopen(f_name, "wb")) == NULL) {
-		printf("%s fopen FAIL\n", f_name);
+	if((fb = fopen(fbs, "rb")) == NULL) {
+		printf("%s fopen FAIL\n", fbs);
 		exit(1);
 	}
 
-	time_t t0 = time(NULL);
+	fread(path_k, K3, sizeof(Vector), fk);
+	fread(path_b, BAND, sizeof(Vector), fb);
 
-	int i;
-	void (*Fourier)(const int, int, Vector, Vector, lapack_complex_double*);
-
-	memset(tb, 0, tb_size); 
-
-	if(strstr(f_name, "_f")) {
-		Fourier = FourierF; 
-	}
-	else {
-		Fourier = FourierA; 
-	}
-
-	for(i=0; i<k_num; i++) {
-		Fourier(basis, i, v[i], q, tb);
-	}
-	
-	fwrite(tb, tb_size, sizeof(lapack_complex_double), f);
-	fclose(f);
-
-	time_t t1 = time(NULL);
-	printf("%s(%s) : %lds\n", __func__, f_name, t1 - t0);
+	fclose(fk);
+	fclose(fb);
 }
 
-void CalcEigenTB(const int basis, lapack_complex_double *tbb, double *w, lapack_complex_double *v) {
+void CalcPathK() {
+	FILE *f;
+	char fs[32];
+
+	sprintf(fs, "path_k%d.bin", K);
+
+	if((f = fopen(fs, "wb")) == NULL) {
+		printf("%s fopen FAIL\n", fs);
+		exit(1);
+	}
+
+	int i;
+	Vector path[K3];
+
+	for(i=0; i<K3; i++) {
+		path[i].x = -M_PI + 2*M_PI * (i / (K*K)) / K;
+		path[i].y = -M_PI + 2*M_PI * ((i / K) % K) / K;
+		path[i].z = -M_PI + 2*M_PI * (i % K) / K;
+	}
+
+	fwrite(path, sizeof(path), 1, f);
+	fclose(f);
+}	
+
+void CalcEigenTB(char *type, double *w, lapack_complex_double *v) {
+	FILE *f;
+	char fs[32];
+
+	sprintf(fs, "tbb_%s.bin", type);
+
+	if((f = fopen(fs, "rb")) == NULL) {
+		printf("%s fopen FAIL\n", fs);
+		exit(1);
+	}
+
+	const int basis = strstr(type, "f") ? BASIS1 : BASIS2;
+
+	lapack_complex_double tb[HB(basis)];
+	fread(tb, sizeof(tb), 1, f);
+	fclose(f);
+
 	char jobz = 'V', uplo = 'L';
 	double rwork[3*basis-2], w_tmp[basis];
 	lapack_int ln = basis, lda = basis, lwork = 2*basis-1, info;
@@ -54,9 +74,7 @@ void CalcEigenTB(const int basis, lapack_complex_double *tbb, double *w, lapack_
 	int i, j;
 
 	for(i=0; i<BAND; i++) {
-		for(j=0; j<H(basis); j++) {
-			v_tmp[j] = tbb[H(basis)*i + j];
-		}
+		for(j=0; j<H(basis); j++) v_tmp[j] = tb[H(basis)*i + j];
 
 		LAPACK_zheev(&jobz, &uplo, &ln, v_tmp, &lda, w_tmp, work, &lwork, rwork, &info);
 		if(info != 0) {
@@ -64,50 +82,66 @@ void CalcEigenTB(const int basis, lapack_complex_double *tbb, double *w, lapack_
 			exit(1);
 		}
 
-		for(j=0; j<basis; j++) {
-			w[basis*i + j] = w_tmp[j];
-		}
-		for(j=0; j<H(basis); j++) {
-			v[H(basis)*i + j] = v_tmp[j];
-		}	
+		for(j=0; j<basis; j++) w[basis*i + j] = w_tmp[j];
+		for(j=0; j<H(basis); j++) v[H(basis)*i + j] = v_tmp[j];
 	}
 }
 
-void MakeTB(char *type, const int basis, lapack_complex_double *tbb) {
+void MakeTB(char *type, char *fs, Vector *path, Vector q) {
 	FILE *f;
-	char f_name[16];
 
-	sprintf(f_name, "band_%s.txt", type);
-
-	if((f = fopen(f_name, "w")) == NULL) {
-		printf("%s fopen FAIL\n", f_name);
+	if((f = fopen(fs, "wb")) == NULL) {
+		printf("%s fopen FAIL\n", fs);
 		exit(1);
 	}
 
-	char jobz = 'V', uplo = 'L';
-	double rwork[3*basis-2], w[basis];
-	lapack_int ln = basis, lda = basis, lwork = 2*basis-1, info;
-	lapack_complex_double work[lwork], v[H(basis)];
-	
+	time_t t0 = time(NULL);
+
+	const int basis = strstr(type, "f") ? BASIS1 : BASIS2;
+	const int path_num = strstr(fs, "tbk") ? K3 : BAND;
+
 	int i, j;
+	lapack_complex_double tb[path_num * H(basis)];
+	void (*Fourier)(char*, int, Vector, Vector, lapack_complex_double*);
 
-	for(i=0; i<BAND; i++) {
-		for(j=0; j<H(basis); j++) {
-			v[j] = tbb[H(basis)*i + j];
-		}
+	if(strstr(type, "f")) Fourier = FourierF; 
+	else if(strstr(type, "s")) Fourier = FourierSubA; 
+	else Fourier = FourierA;
 
-		LAPACK_zheev(&jobz, &uplo, &ln, v, &lda, w, work, &lwork, rwork, &info);
-		if(info != 0) {
-			printf("LAPACK_zheev FAIL\n");
+	memset(tb, 0, sizeof(tb));
+
+	for(i=0; i<path_num; i++) Fourier(type, i, path[i], q, tb);
+	
+	fwrite(tb, sizeof(tb), 1, f);
+	fclose(f);
+
+	time_t t1 = time(NULL);
+	printf("%s(%s) : %lds\n", __func__, fs, t1 - t0);
+
+	if(strstr(fs, "tbk")) return;
+	else {
+		FILE *fb;
+		char fbs[32];
+
+		sprintf(fbs, "band_%s.txt", type);
+
+		if((fb = fopen(fbs, "w")) == NULL) {
+			printf("%s fopen FAIL\n", fbs);
 			exit(1);
 		}
 
-		fprintf(f, "%4d", i);
-		for(j=0; j<basis; j++) {
-			fprintf(f, "%12f", w[j]);
-		}
-		fprintf(f, "\n");
-	}
+		double w[path_num * basis];
+		lapack_complex_double v[path_num * H(basis)];
 
-	fclose(f);
+		CalcEigenTB(type, w, v);
+
+		for(i=0; i<BAND; i++) {
+			fprintf(fb, "%4d", i);
+			for(j=0; j<basis; j++) fprintf(fb, "%12f", w[basis*i + j]);
+			fprintf(fb, "\n");
+		}
+
+		fclose(fb);
+	}
 }
+

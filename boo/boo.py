@@ -22,7 +22,8 @@ parser.add_argument('-p', '--phase', type=int, default=None)
 args = parser.parse_args()
 
 w = wan2lat.Wan2Lat()
-if args.wan2lat: w.Extract()
+if args.wan2lat: w.SeperateLat()
+if not args.wan2lat: w.Extract()
 
 d = draw.Draw(args.values[0], args.values[1], args.values[2], path, path_label)
 if args.tb: d.DrawTB()
