@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#$ -pe mpi 16
+#$ -pe mpi 1
 #$ -q openmp.q
 #$ -j y
 #$ -cwd
@@ -11,10 +11,10 @@ export LD_LIBRARY_PATH="/usr/lib:/usr/lib64:/usr/slib:/home/9yelin9/usr/lib:/hom
 t0=$(date +%s.%N)
 t0_string=$(date)
 
-./boo_tb f 0
-./boo_tb a 0
-./boo_tb c 0
-./boo_tb g 0
+./boo_tb f
+./boo_tb a
+./boo_tb c
+./boo_tb g
 
 t1=$(date +%s.%N)
 t1_string=$(date)

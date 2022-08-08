@@ -18,7 +18,7 @@ for n in `seq 0.2 0.2 11.8`
 do
 	for u in `seq 0 1 9`
 	do
-		./boo c $JU $SOC $n $u $IS_UNFOLD
+		./boo sg $JU $SOC $n $u $IS_UNFOLD
 	done
 done
 

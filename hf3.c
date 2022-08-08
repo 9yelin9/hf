@@ -1,4 +1,6 @@
-// hf3.c : universal functions for calculating 3 band models
+// hf3.c : universal functions for calculating hf3 model
+
+#define DOT(i, j) (path[i].x*r[j].x + path[i].y*r[j].y + path[i].z*r[j].z)
 
 #include "hf3.h" 
 
@@ -25,7 +27,8 @@ void ReadTB(Solution *s) {
 	fclose(fb);
 }
 
-Energy CalcEigen(Solution *s, int k_num, lapack_complex_double *tb, double *w, lapack_complex_double *v) {
+// returning struct is not efficient
+Energy CalcEigen(Solution *s, int path_num, lapack_complex_double *tb, double *w, lapack_complex_double *v) {
 	Energy e = {
 		.min =  100,
 		.max = -100
@@ -43,12 +46,10 @@ Energy CalcEigen(Solution *s, int k_num, lapack_complex_double *tb, double *w, l
 	else if(strstr(s->type, "s")) Interaction = InteractionSubA;
 	else Interaction = InteractionA;
 
-	for(i=0; i<k_num; i++) {
+	for(i=0; i<path_num; i++) {
 		memset(v_tmp, 0, sizeof(v_tmp));
 
-		for(j=0; j<H(s->basis); j++) {
-			v_tmp[j] = tb[H(s->basis)*i + j];
-		}
+		for(j=0; j<H(s->basis); j++) v_tmp[j] = tb[H(s->basis)*i + j];
 
 		Interaction(s, v_tmp);
 
@@ -176,55 +177,48 @@ void MakeBand(Solution *s, int is_unfold) {
 
 	time_t t0 = time(NULL);
 
+	int i, j;
 	double w[BAND*s->basis];
 	lapack_complex_double v[HB(s->basis)];
-
-	int i, j;
 
 	CalcEigen(s, BAND, s->tbb, w, v);
 
 	if(!is_unfold) {
 		for(i=0; i<BAND; i++) {
 			fprintf(f, "%4d", i);
-			for(j=0; j<s->basis; j++) {
-				fprintf(f, "%12f", w[s->basis*i + j]);
-			}
+			for(j=0; j<s->basis; j++) fprintf(f, "%12f", w[s->basis*i + j]);
 			fprintf(f, "\n");
 		}
 	}
 	else {
-		FILE *f_path;
+		FILE *fp;
 		
-		if((f_path = fopen("input/path_b.bin", "rb")) == NULL) {
+		if((fp = fopen("input/path_b.bin", "rb")) == NULL) {
 			printf("path_b.bin fopen FAIL\n");
 			exit(1);
 		}
 
-		int k, m, n;
+		int k;
 		double p2;
 		Vector path[BAND], r[SUPER] = {{1, 0, 0}, {0, 0, 0}};	
-		lapack_complex_double p, exp;
+		lapack_complex_double exp[SUPER], p; 
 
-		fread(path, sizeof(path), 1, f_path);
-		fclose(f_path);
-		
+		fread(path, sizeof(path), 1, fp);
+		fclose(fp);
+
 		for(i=0; i<BAND; i++) {
 			fprintf(f, "%4d", i);
+			for(j=0; j<SUPER; j++) exp[j] = cos(DOT(i, j)) - sin(DOT(i, j)) * I;
 
 			for(j=0; j<BASIS2; j++) {
 				p2 = 0;
-				for(k=0; k<OBT; k++) {
-					for(m=0; m<2; m++) {
-						p = 0;
-						for(n=0; n<SUPER; n++) {
-							exp = cos(DOT_UNFOLD) - sin(DOT_UNFOLD) * I;
-							p += v[BASIS2*(BASIS2*i + j) + OBT*(2*m + n) + k] * exp;
-						}		
-						p2 += COMPLEX2(p) / SUPER;
-					}
-				}
 
-				if(p2 > 0.5) fprintf(f, "%12f", w[BASIS2*i + j]);
+				for(k=0; k<BASIS1; k++) {
+					p = v[H(BASIS2)*i + BASIS2*j + OBT*(k/OBT) + k] * exp[0] + v[H(BASIS2)*i + BASIS2*j + OBT*(k/OBT) + k+OBT] * exp[1];	
+					p2 += COMPLEX2(p) / SUPER;
+				}
+				
+				fprintf(f, "%12f%12f", p2, w[BASIS2*i + j]); 
 			}
 			fprintf(f, "\n");
 		}
@@ -268,7 +262,7 @@ void MakeDos(Solution *s, int is_unfold) {
 
 		for(i=0; i<K3*s->basis; i++) {
 			for(j=0; j<s->basis; j++) {
-				dos[j] += GREEN * COMPLEX2(v[s->basis*i + j]);
+				dos[j] += GREEN(i) * COMPLEX2(v[s->basis*i + j]);
 			}
 		}
 

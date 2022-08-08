@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#$ -pe mpi 16
+#$ -pe mpi 1
 #$ -q openmp.q
 #$ -j y
 #$ -cwd
@@ -11,13 +11,14 @@ export LD_LIBRARY_PATH="/usr/lib:/usr/lib64:/usr/slib:/home/9yelin9/usr/lib:/hom
 t0=$(date +%s.%N)
 t0_string=$(date)
 
-JU=0.0
-SOC=0.0
+JU=0
+SOC=0
+IS_UNFOLD=0
 for n in `seq 0.2 0.2 11.8`
 do
 	for u in `seq 0 1 9`
 	do
-		./boo a $JU $SOC $n $u
+		./boo a $JU $SOC $n $u $IS_UNFOLD
 	done
 done
 

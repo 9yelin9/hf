@@ -11,6 +11,7 @@ class Draw:
 		self.type = type
 		self.JU = float(JU)
 		self.SOC = float(SOC)
+		self.is_unfold = int(is_unfold)
 		self.path = path
 		self.path_label = path_label
 
@@ -18,37 +19,19 @@ class Draw:
 		self.obt = 3
 		self.basis = 6 if re.search('f', type) else 12
 
-		self.dir = 'output/K%d_JU%.2f_SOC%.2f/' % (self.K, self.JU, self.SOC)
+		self.dir = 'output/K%d_JU%.2f_SOC%.2f/' % (self.K, self.JU, self.SOC) if self.is_unfold == 0 else 'output/K%d_JU%.2f_SOC%.2f_unfold/' % (self.K, self.JU, self.SOC)
 		self.title = '%s K=%d J/U=%.2f SOC=%.2f\n' % (type, self.K, self.JU, self.SOC)
 		self.colors=['b', 'g', 'r']
 		self.labels=['xy', 'yz', 'zx']
 	
-	def DrawTB(self):
-		f_name = 'input/band_%s.txt' % (self.type)
-		f = open(f_name, 'r')
-		arr = np.genfromtxt(f)
-		f.close()
-
-		fig, ax = plt.subplots()
-
-		for i in range(1, self.basis+1):
-			ax.plot(arr[:, 0], arr[:, i], color='tab:blue')
-
-		ax.grid(True)
-		ax.set_xticks(self.path)
-		ax.set_xticklabels(self.path_label)
-		plt.suptitle(f_name)	
-		fig.tight_layout()
-		plt.show()
-
 	def DrawBand(self, N, U, ax):
 		N = float(N)
 		U = float(U)
 
-		f_name = [f for f in os.listdir(self.dir) if re.search('band_%s_N%.1f_U%.1f' % (self.type, N, U), f)][0]
-		fermi = float(re.sub('fermi', '', re.search('fermi\d+[.]\d+', f_name).group()))
+		fs = [f for f in os.listdir(self.dir) if re.search('band_%s_N%.1f_U%.1f' % (self.type, N, U), f)][0]
+		fermi = float(re.sub('_fermi', '', re.search('fermi\d+[.]\d+', fs).group()))
 
-		f = open(self.dir + f_name, 'r')
+		f = open(self.dir + fs, 'r')
 		arr = np.genfromtxt(f)
 		f.close()
 
@@ -67,17 +50,17 @@ class Draw:
 		ax.set_ylabel('Energy')
 		ax.set_ylim(e_min, e_max)
 
-		return e_min, e_max, f_name 
+		return e_min, e_max, fs 
 	
 	def DrawDos(self, N, U, ax, e_min=None, e_max=None):
 		N = float(N)
 		U = float(U)
 
-		f_name = [f for f in os.listdir(self.dir) if re.search('dos_%s_N%.1f_U%.1f' % (self.type, N, U), f)][0]
-		fermi = float(re.sub('fermi', '', re.search('fermi\d+[.]\d+', f_name).group()))
-		title = self.dir + f_name
+		fs = [f for f in os.listdir(self.dir) if re.search('dos_%s_N%.1f_U%.1f' % (self.type, N, U), f)][0]
+		fermi = float(re.sub('_fermi', '', re.search('fermi\d+[.]\d+', fs).group()))
+		title = self.dir + fs
 
-		f = open(self.dir + f_name, 'r')
+		f = open(self.dir + fs, 'r')
 		arr = np.genfromtxt(f)
 		f.close()
 
@@ -108,19 +91,58 @@ class Draw:
 
 		fig, ax = plt.subplots(1, 2, gridspec_kw={'width_ratios': [3, 1]}, figsize=[16, 8])
 
-		e_min, e_max, f_name = self.DrawBand(N, U, ax[0])
+		e_min, e_max, fs = self.DrawBand(N, U, ax[0])
 		self.DrawDos(N, U, ax[1], e_min, e_max)
 
-		f_name_s = f_name.split(sep='_')
-		f_name_s = [s for s in f_name_s if re.search('[a-zA-Z]+\d+[.]\d+', s)]
+		fs_s = fs.split(sep='_')
+		fs_s = [s for s in fs_s if re.search('[a-zA-Z]+\d+[.]\d+', s)]
 
 		title = self.title
-		for s in f_name_s:
+		for s in fs_s:
 			s_name = re.search('[a-zA-Z]+', s).group()
 			s_val = re.search('\d+[.]\d+', s).group()
 			title += '%s=%s ' % (s_name, s_val)
 
 		plt.suptitle(title)
 		fig.tight_layout()
-		fig.savefig('diagram/%s/%s' % (re.sub('output/', '', self.dir), re.sub('txt', 'png', f_name)))
+		fig.savefig('diagram/%s/%s' % (re.sub('output/', '', self.dir), re.sub('txt', 'png', fs)))
+		plt.show()
+
+	def DrawPhase(self):
+		val = [[float(re.sub('_N', '', re.search('_N\d+[.]\d+', f).group())),\
+				float(re.sub('_U', '', re.search('_U\d+[.]\d+', f).group())),\
+				float(re.sub('_m', '', re.search('_m[-]?\d+[.]\d+', f).group()))] for f in os.listdir(self.dir) if re.match('band_%s' % (self.type), f)]
+		val = np.array(val)
+
+		x = np.unique(val[:, 0])
+		y = np.unique(val[:, 1])
+
+		X, Y = np.meshgrid(x, y)
+		Z = np.zeros((len(y), len(x)))
+
+		for v in val:
+			"""
+			f = open(v[4], 'r')
+			e = np.genfromtxt(f)[:, 1:].astype('float')
+			f.close()
+
+			e = np.abs(e - float(v[3]))
+			if np.where(e < 1e-3): ins += [[v[0], v[1]]]
+			"""
+
+			for i, xi in enumerate(x):
+				for j, yj in enumerate(y):
+					if v[0] == xi and v[1] == yj: Z[j][i] = v[2]
+
+		fig, ax = plt.subplots()
+		#cs = ax.contour(X, Y, Z, levels=10, cmap='binary_r')
+		cb = ax.contourf(X, Y, Z, levels=10)
+		#plt.clabel(cs)
+		plt.colorbar(cb, label='Magnetization (M)')
+		#ax.grid(True, color='black')
+		ax.set_xlabel('Occupation (N)')
+		ax.set_ylabel('Interaction (U)')
+		plt.suptitle(self.dir + self.type)	
+		fig.tight_layout()
+		fig.savefig('diagram/%s/phase_%s' % (re.sub('output/', '', self.dir), self.type))
 		plt.show()

@@ -13,7 +13,7 @@ path = [0, 100, 200, 340, 510]
 path_label = ['G', 'X', 'M', 'G', 'R']
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-v', '--values', nargs='+', default=['f', 0.0, 0.0, 5.0, 0.0], help='<type> <K> <JU> <SOC> <N> <U>')
+parser.add_argument('-v', '--values', nargs='+', default=['f', 0, 0, 0, 0, 0], help='<type> <JU> <SOC> <is_unfold> <N> <U>')
 parser.add_argument('-w', '--wan2lat', type=int, default=None)
 parser.add_argument('-t', '--tb', type=int, default=None)
 parser.add_argument('-c', '--cvg', type=int, default=None)
@@ -25,8 +25,8 @@ w = wan2lat.Wan2Lat()
 if args.wan2lat: w.SeperateLat()
 if not args.wan2lat: w.Extract()
 
-d = draw.Draw(args.values[0], args.values[1], args.values[2], path, path_label)
+d = draw.Draw(args.values[0], args.values[1], args.values[2], args.values[3], path, path_label)
 if args.tb: d.DrawTB()
 if args.cvg: pass
-if args.band: d.DrawBandDos(args.values[3], args.values[4])
-if args.phase: pass
+if args.band: d.DrawBandDos(args.values[4], args.values[5])
+if args.phase: d.DrawPhase()
