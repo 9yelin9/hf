@@ -218,8 +218,10 @@ void MakeBand(Solution *s, int is_unfold) {
 					p2 += COMPLEX2(p) / SUPER;
 				}
 				
-				fprintf(f, "%12f%12f", p2, w[BASIS2*i + j]); 
+				fprintf(f, "%12f", p2); 
 			}
+
+			for(j=0; j<BASIS2; j++) fprintf(f, "%12f", w[BASIS2*i + j]);
 			fprintf(f, "\n");
 		}
 	}

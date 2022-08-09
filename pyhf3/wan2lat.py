@@ -3,7 +3,7 @@
 import re
 
 class Wan2Lat:
-	def runWan2Lat(self, material):
+	def Run(self, material):
 		f_wan = open('%s/input/wannier90_hr.dat' % (material), 'r')
 		f_lat = open('%s/input/lattice.txt' % (material), 'w')
 
