@@ -1,4 +1,4 @@
-// hf3.h : universal headers for calculating 3 band models
+// hf3.h : headers for Hartree-Fock approximated 3-band Hubbard model
 
 #ifndef HF3_H
 #define HF3_H
@@ -6,17 +6,13 @@
 #define USE_MATH_DEFINES
 #define OMP_THREAD (1)
 
+#define K3 (K*K*K) // K^3
 #define OBT (3) // num of orbital
-#define SUPER (2) // num of supercell
-#define BASIS1 (6) // num of basis1
-#define BASIS2 (12) // num of basis2
+#define SUPER (2) // num of supercell in primitive cell (in k-space)
+#define SINGLE (6) // num of single cell basis
+#define DOUBLE (2*SINGLE) // num of double cell basis
 
-#define H(basis) (basis * basis) // size of Hamiltonian matrix at single k point
-#define HK(basis) (K3 * H(basis)) // size of Hamiltonian matrix in k space
-#define HB(basis) (BAND * H(basis)) // size of Hamiltonian matrix in band path
-
-#define COMPLEX2(x) (pow(creal(x), 2) + pow(cimag(x), 2))
-#define GREEN(i) (0.05 / (pow(energy - w[i], 2) + pow(0.05, 2))) 
+#define CSQR(x) (pow(creal(x), 2) + pow(cimag(x), 2))
 
 #include <omp.h>
 #include <math.h>
@@ -26,73 +22,75 @@
 #include <string.h>
 #include <lapacke.h>
 
-typedef struct Vector {
-	double x;
-	double y;
-	double z;
-} Vector;
-
 typedef struct Lattice {
-	int i;
-	int j;
-	int k;
+	int r[3];
 	int obt1;
 	int obt2;
 	double tre;
 	double tim;
 } Lattice;
 
-typedef struct SelfConsistentSolution {
-	// input
-	int basis; // num of bases
-	char *type; // type of magnetic structure
-	char runtime[16]; // runtime
-	double JU; // Hund coupling / Coulomb interaction
-	double SOC; // spin-orbit coupling
-	double N; // occupation
-	double U; // Coulomb interaction
-	double J; // Hund coupling
-	lapack_complex_double *tbk; // tight-binding Hamiltonian in k-space
-	lapack_complex_double *tbb; // tight-binding Hamiltonian in band path
-
-	// output
-	double n[OBT]; // occupation per orbital
-	double m[OBT]; // magnetization per orbital
-	double n_total; // total occupation
-	double m_total; // total magnetization
-	double fermi; // Fermi level	
-	double e; // energy
-} Solution;
+typedef struct Vector {
+	double k[3];
+} Vector;
 
 typedef struct Energy {
 	double min;
 	double max;
 } Energy;
 
-extern const int K; // num of k points in k space path
-extern const int K3; // K*K*K
-extern const int BAND; //num of kpoints in band path
+typedef struct SelfConsistentSolution {
+	// input
+	int basis; // num of bases
+	char runtime[16]; // runtime
+	char cell_type[8]; // type of unit cell
 
-extern void InteractionF(Solution *s, lapack_complex_double *v_tmp); // add interaction term to Hamiltonian of FM
-extern void InteractionA(Solution *s, lapack_complex_double *v_tmp); // add interaction term to Hamiltonian of AF
-extern void InteractionSubA(Solution *s, lapack_complex_double *v_tmp); // add interaction term to Hamiltonian of AF in sublattice basis
-extern void FourierF(char *type, int path_num, int lat_len, Vector path, Vector q, Lattice *lat, lapack_complex_double *tb); // Fourier transform of FM
-extern void FourierA(char *type, int path_num, int lat_len, Vector path, Vector q, Lattice *lat, lapack_complex_double *tb); // Fourier transform of AF
-extern void FourierSubA(char *type, int path_num, int lat_len, Vector path, Vector q, Lattice *lat, lapack_complex_double *tb); // Fourier transform of AF in sublattice basis
-extern void OccupationF(double fermi, double *w, lapack_complex_double *v, double *n, double *m, double *e); // calculate occupation of FM
-extern void OccupationA(double fermi, double *w, lapack_complex_double *v, double *n, double *m, double *e); // calcultae occupation of AF
-extern void OccupationSubA(double fermi, double *w, lapack_complex_double *v, double *n, double *m, double *e); // calcultae occupation of AF in sublattice basis
+	char *type; // type of magnetization
+	double JU; // Hund coupling / Coulomb interaction
+	double SOC; // spin-orbit coupling
+	double N; // occupation
+	double U; // Coulomb interaction
+	double J; // Hund coupling
 
-void CalcPathK(); // calculate k space path
-void CalcPathB(); // calculate band path
-void ReadPath(Vector *path_k, Vector *path_b); // read path binary data
-void CalcEigenTB(char *type, char *path_type, double *w, lapack_complex_double *v); // calculate eigenproblems of tight-binding Hamiltonian
-void MakeBandTB(char *type, char *fs, Vector *path, Vector q); // make band structure data (tight-binding only)
+	Vector vq; // order of magnetization
+	Vector vk[K3]; // vectors in k-space
+	Vector vb[BAND]; // vectors in band path
+	lapack_complex_double *hk; // tight-binding Hamiltonian matrices in k-space
+	lapack_complex_double *hb; // tight-binding Hamiltonian matrices in band path
 
-void ReadTB(Solution *s); // read tight-binding Hamiltonian K, BAND and transition matrix binary data
-Energy CalcEigen(Solution *s, int path_num, lapack_complex_double *tb, double *w, lapack_complex_double *v); // calculate eigenproblems 
-void CalcSolution(Solution *s, int is_unfold); // calculate self-consistent solution
-void MakeBand(Solution *s, int is_unfold); // make band structure data
-void MakeDos(Solution *s, int is_unfold); // make density of states data
+	// output
+	double n[OBT]; // occupation per orbital
+	double m[OBT]; // magnetization per orbital
+	double ntot; // total occupation
+	double mtot; // total magnetization
+	double fermi; // Fermi level	
+	double e; // energy
+} Solution;
+
+void CalcVK(); // calculate vectors in k-space
+void CalcVB(); // calculate vectors in band path
+void CalcTB(char *type); // calculate tight-binding Hamiltonian matrices
+Energy CalcEigen(Solution *s, int h_len, lapack_complex_double *h, double *w, lapack_complex_double *v); // calculate eigenproblems 
+void CalcSolution(Solution *s); // calculate self-consistent solution
+
+int* ReadPath(); // read path in info.txt
+Lattice* ReadLattice(int *l_len); // read lattice in lattice.txt
+void ReadInfo(char *type, char *cell, Vector *vq); // read info in info.txt
+void ReadVector(Vector *vk, Vector *vb); // read vectors
+void ReadTB(Solution *s); // read tight-binding Hamiltonian K, BAND and transition matrices
+
+void GetName(Solution *s, char *data_type, char *fs); // get file name
+
+void MakeBand(Solution *s); // make band structure data
+void MakeDos(Solution *s); // make density of states data
+
+void FourierS(int l_len, int h_num, Vector v, Vector vq, Lattice *l, lapack_complex_double *h); // Fourier transform of single cell
+void FourierD(int l_len, int h_num, Vector v, Vector vq, Lattice *l, lapack_complex_double *h); // Fourier transform of double cell
+
+void InteractionS(Solution *s, lapack_complex_double *v_tmp); // add interaction term to Hamiltonian of single cell
+void InteractionD(Solution *s, lapack_complex_double *v_tmp); // add interaction term to Hamiltonian of double cell
+
+void OccupationS(double fermi, double *w, lapack_complex_double *v, double *n, double *m, double *e); // calculate occupation of single cell
+void OccupationD(double fermi, double *w, lapack_complex_double *v, double *n, double *m, double *e); // calcultae occupation of double cell
 
 #endif
