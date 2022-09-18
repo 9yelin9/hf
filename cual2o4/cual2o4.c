@@ -1,4 +1,4 @@
-// baoso3/baoso3.c : calculate BaOsO3 model
+// cual2o4/cual2o4.c : calculate CuAl2O4 model
 
 #include "../hf3.h"
 
@@ -16,31 +16,45 @@ void CalcVB() {
 	int i = 0, j, *sym = ReadPath();
 	Vector vb[BAND];
 
+	for(j=0; j<sym[0]; j++) { // L-G
+		vb[i].k[0] = M_PI - M_PI * j / sym[0];
+		vb[i].k[1] = M_PI - M_PI * j / sym[0];
+		vb[i].k[2] = M_PI - M_PI * j / sym[0];
+		i++;
+	}
+
 	for(j=0; j<sym[1]; j++) { // G-X
 		vb[i].k[0] = M_PI * j / sym[1];
 		vb[i].k[1] = 0;
-		vb[i].k[2] = 0;
+		vb[i].k[2] = M_PI * j / sym[1];
 		i++;
 	}
 
-	for(j=0; j<sym[2]; j++) { // X-M
+	for(j=0; j<sym[2]; j++) { // X-W
 		vb[i].k[0] = M_PI;
-		vb[i].k[1] = M_PI * j / sym[2];
-		vb[i].k[2] = 0;
+		vb[i].k[1] = (M_PI/2) * j / sym[2];
+		vb[i].k[2] = M_PI + (M_PI/2) * j / sym[2];
 		i++;
 	}
 
-	for(j=0; j<sym[3]; j++) { // M-G
-		vb[i].k[0] = M_PI - M_PI * j / sym[3];
-		vb[i].k[1] = M_PI - M_PI * j / sym[3];
-		vb[i].k[2] = 0;
+	for(j=0; j<sym[3]; j++) { // W-L
+		vb[i].k[0] = M_PI;
+		vb[i].k[1] = (M_PI/2) + (M_PI/2) * j / sym[3];
+		vb[i].k[2] = (3*M_PI/2) - (M_PI/2) * j / sym[3];
 		i++;
 	}
 
-	for(j=0; j<sym[4]; j++) { // G-R
-		vb[i].k[0] = M_PI * j / sym[4];
-		vb[i].k[1] = M_PI * j / sym[4];
-		vb[i].k[2] = M_PI * j / sym[4];
+	for(j=0; j<sym[4]; j++) { // L-K
+		vb[i].k[0] = M_PI - (M_PI/4) * j / sym[4];
+		vb[i].k[1] = M_PI + (M_PI/2) * j / sym[4];
+		vb[i].k[2] = M_PI - (M_PI/4) * j / sym[4];
+		i++;
+	}
+
+	for(j=0; j<sym[5]; j++) { // K-G
+		vb[i].k[0] = (3*M_PI/4) - (3*M_PI/4) * j / sym[5];
+		vb[i].k[1] = (3*M_PI/2) - (3*M_PI/2) * j / sym[5];
+		vb[i].k[2] = (3*M_PI/4) - (3*M_PI/4) * j / sym[5];
 		i++;
 	}
 
@@ -149,13 +163,13 @@ void InteractionD(Solution *s, lapack_complex_double *v_block) {
 	memset(m_, 0, sizeof(m_));
 
 	for(i=0; i<OBT; i++) {
-		n[i] = s->n[i];
-		m[i] = s->m[i];
+		n[i] = s->n[i]/2;
+		m[i] = s->m[i]/2;
 
 		for(j=0; j<OBT; j++) {
 			if(j != i) {
-				n_[i] += s->n[j];
-				m_[i] += s->m[j];
+				n_[i] += s->n[j]/2;
+				m_[i] += s->m[j]/2;
 			}
 		}		
 	}
@@ -175,7 +189,7 @@ void InteractionD(Solution *s, lapack_complex_double *v_block) {
 	*/
 }
 
-void OccupationS(double fermi, double *w, lapack_complex_double *v, lapack_complex_double *ek, double *n, double *m, double *e) {
+void OccupationS(double fermi, double *w, lapack_complex_double *v, double *n, double *m, double *e) {
 	int i, j;
 
 	memset(n, 0, OBT * sizeof(double));
@@ -193,7 +207,7 @@ void OccupationS(double fermi, double *w, lapack_complex_double *v, lapack_compl
 	}
 }
 
-void OccupationD(double fermi, double *w, lapack_complex_double *v, lapack_complex_double *ek, double *n, double *m, double *e) {
+void OccupationD(double fermi, double *w, lapack_complex_double *v, double *n, double *m, double *e) {
 	int i, j;
 
 	memset(n, 0, OBT * sizeof(double));
@@ -204,8 +218,8 @@ void OccupationD(double fermi, double *w, lapack_complex_double *v, lapack_compl
 		if(w[i] < fermi) {
 			for(j=0; j<OBT; j++) {
 				n[j] += CSQR(v[DOUBLE*i + j]) + CSQR(v[DOUBLE*i + j+OBT]) + CSQR(v[DOUBLE*i + j+2*OBT]) + CSQR(v[DOUBLE*i + j+3*OBT]);
-				//m[j] +=(CSQR(v[DOUBLE*i + j]) + CSQR(v[DOUBLE*i + j+OBT])) - (CSQR(v[DOUBLE*i + j+2*OBT]) + CSQR(v[DOUBLE*i + j+3*OBT]));
-				m[j] +=(creal(v[DOUBLE*i + j]) * creal(v[DOUBLE*i + j+OBT]) + cimag(v[DOUBLE*i + j]) * cimag(v[DOUBLE*i + j+OBT])) * 4;
+				m[j] +=((creal(v[DOUBLE*i + j]) - cimag(v[DOUBLE*i + j]) * I) * v[DOUBLE*i + j+OBT]) * 4;
+				//m[j] +=(CSQR(v[DOUBLE*i + j]) - CSQR(v[DOUBLE*i + j+2*OBT])) * 2;
 				*e   +=(CSQR(v[DOUBLE*i + j]) + CSQR(v[DOUBLE*i + j+OBT]) + CSQR(v[DOUBLE*i + j+2*OBT]) + CSQR(v[DOUBLE*i + j+3*OBT])) * w[i];
 			}
 		}

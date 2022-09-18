@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#$ -pe mpi 16
+#$ -pe mpi 1
 #$ -q openmp.q
 #$ -j y
 #$ -cwd
@@ -11,17 +11,10 @@ export LD_LIBRARY_PATH="/usr/lib:/usr/lib64:/usr/slib:/home/9yelin9/usr/lib:/hom
 t0=$(date +%s.%N)
 t0_string=$(date)
 
-SOC=0
-for ju in `seq 0.0 0.1 0.3`
-do
-	for n in `seq 0.2 0.2 11.8`
-	do
-		for u in `seq 0 1 9`
-		do
-			./baoso3 c $ju $SOC $n $u
-		done
-	done
-done
+./cual2o4 tb f
+./cual2o4 tb a
+./cual2o4 tb c
+./cual2o4 tb g
 
 t1=$(date +%s.%N)
 t1_string=$(date)

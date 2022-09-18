@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#$ -pe mpi 16
+#$ -pe mpi 1
 #$ -q openmp.q
 #$ -j y
 #$ -cwd
@@ -14,11 +14,11 @@ t0_string=$(date)
 SOC=0
 for ju in `seq 0.0 0.1 0.3`
 do
-	for n in `seq 0.2 0.2 11.8`
+	for n in `seq 0.1 0.1 5.9`
 	do
 		for u in `seq 0 1 9`
 		do
-			./baoso3 c $ju $SOC $n $u
+			./cual2o4 f $ju $SOC $n $u
 		done
 	done
 done

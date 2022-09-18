@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#$ -pe mpi 1
+#$ -pe mpi 16
 #$ -q openmp.q
 #$ -j y
 #$ -cwd
@@ -16,12 +16,7 @@ for ju in `seq 0.0 0.1 0.3`
 do
 	for n in `seq 0.2 0.2 11.8`
 	do
-		for u in `seq 0.0 0.1 0.9`
-		do
-			./baoso3 a $ju $SOC $n $u
-		done
-
-		for u in `seq 1 1 9`
+		for u in `seq 0 1 9`
 		do
 			./baoso3 a $ju $SOC $n $u
 		done

@@ -12,8 +12,8 @@ from pyhf3 import check
 from pyhf3 import draw
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-m', '--material', type=str, default='baoso3')
-parser.add_argument('-o', '--output', type=str, default='output')
+parser.add_argument('-mat', '--material', type=str, default='baoso3')
+parser.add_argument('-out', '--output', type=str, default='output')
 
 parser.add_argument('-wl', '--wan2lat', type=int, default=None)
 parser.add_argument('-ml', '--ml', type=int, default=None)
@@ -25,6 +25,8 @@ parser.add_argument('-b', '--band', nargs='+', default=None, help='<N> <U>')
 parser.add_argument('-u', '--banduf', nargs='+', default=None, help='<N> <U>')
 parser.add_argument('-t', '--bandtest', type=int, default=None)
 parser.add_argument('-p', '--phase', type=int, default=None)
+parser.add_argument('-c', '--cvg', nargs='+', default=None, help='<N> <U>')
+parser.add_argument('-m', nargs='+', default=None, help='<N>')
 args = parser.parse_args()
 
 f_info = open('%s/input/info.txt' % (args.material), 'r')
@@ -57,6 +59,8 @@ if args.draw:
 	if args.banduf: d.DrawBandDos(args.banduf[0], args.banduf[1], 1)
 	if args.bandtest: d.DrawBandTest()
 	if args.phase: d.DrawPhase()
+	if args.cvg: d.DrawCvg(args.cvg[0], args.cvg[1])
+	if args.m : d.DrawM(args.m[0])
 	sys.exit()
 
 type_list = ['sa', 'sc', 'sg']

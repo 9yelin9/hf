@@ -28,6 +28,125 @@ void CalcVK() {
 	fclose(f);
 }
 
+inline void Product(int v_len, Vector *v, lapack_complex_double *e) {
+	int i, j, k;
+	double dot;
+	Vector r[SUPER] = {{{0, 0, 0}}, {{1, 0, 0}}};
+
+	for(i=0; i<v_len; i++) {
+		for(j=0; j<SUPER; j++) {
+			dot = 0;
+			for(k=0; k<3; k++) dot += r[j].k[k] * v[i].k[k];
+			e[2*i + j] = cos(dot) - sin(dot) * I;
+		}
+	}
+}
+
+void CalcE() {
+	FILE *fk, *fb;
+	char fks[64], fbs[64];
+
+	sprintf(fks, "input/ek%d.bin", K);
+	sprintf(fbs, "input/eb.bin");
+
+	if((fk = fopen(fks, "wb")) == NULL) {
+		printf("%s fopen FAIL\n", fks);
+		exit(1);
+	}
+	if((fb = fopen(fbs, "wb")) == NULL) {
+		printf("%s fopen FAIL\n", fbs);
+		exit(1);
+	}
+
+	Vector vk[K3], vb[BAND];
+	lapack_complex_double ek[2 * K3], eb[2 * BAND];
+
+	ReadVector(vk, vb);
+
+	Product(K3,   vk, ek);
+	Product(BAND, vb, eb);
+
+	fwrite(ek, sizeof(ek), 1, fk);
+	fwrite(eb, sizeof(eb), 1, fb);
+
+	fclose(fk);
+	fclose(fb);
+}
+
+void CalcTB(char *type) {
+	FILE *fk, *fb, *f;
+	char fks[64], fbs[64], fs[64];
+
+	sprintf(fks, "input/hk%d_%s.bin", K, type);
+	sprintf(fbs, "input/hb_%s.bin", type);
+	sprintf(fs, "input/band_%s.txt", type);
+
+	if((fk = fopen(fks, "wb")) == NULL) {
+		printf("%s fopen FAIL\n", fks);
+		exit(1);
+	}
+	if((fb = fopen(fbs, "wb")) == NULL) {
+		printf("%s fopen FAIL\n", fbs);
+		exit(1);
+	}
+	if((f = fopen(fs, "w")) == NULL) {
+		printf("%s fopen FAIL\n", fs);
+		exit(1);
+	}
+
+	time_t t0 = time(NULL);
+
+	int i, j, l_len = 0;
+	char cell_type[8];
+	Vector vq, vk[K3], vb[BAND];
+	void (*Fourier)(int, int, Vector, Vector, Lattice*, lapack_complex_double*);
+
+	Lattice *l = ReadLattice(&l_len);
+	ReadInfo(type, cell_type, &vq);
+	ReadVector(vk, vb);
+
+	const int basis = strstr(cell_type, "s") ? SINGLE : DOUBLE;
+	lapack_complex_double hk[K3 * basis*basis], hb[BAND * basis*basis];
+
+	if(strstr(cell_type, "s")) Fourier = FourierS;
+	else Fourier = FourierD;
+
+#pragma omp parallel for
+	for(i=0; i<K3;   i++) Fourier(l_len, i, vk[i], vq, l, hk);
+#pragma omp parallel for
+	for(i=0; i<BAND; i++) Fourier(l_len, i, vb[i], vq, l, hb);
+
+	fwrite(hk, sizeof(hk), 1, fk);
+	fwrite(hb, sizeof(hb), 1, fb);
+
+	fclose(fk);
+	fclose(fb);
+
+	time_t t1 = time(NULL);
+	printf("%s(%s, %s) : %lds\n", __func__, fks, fbs, t1 - t0);
+
+	// make band
+	char jobz = 'V', uplo = 'L';
+	double rwork[3*basis-2], w[basis];
+	lapack_int ln = basis, lda = basis, lwork = 2*basis-1, info;
+	lapack_complex_double work[lwork], v[basis*basis];
+
+	for(i=0; i<BAND; i++) {
+		for(j=0; j<basis*basis; j++) v[j] = hb[basis*basis*i + j];
+
+		LAPACK_zheev(&jobz, &uplo, &ln, v, &lda, w, work, &lwork, rwork, &info);
+		if(info != 0) {
+			printf("LAPACK_zheev FAIL\n");
+			exit(1);
+		}
+
+		fprintf(f, "%4d", i);
+		for(j=0; j<basis; j++) fprintf(f, "%12f", w[j]);
+		fprintf(f, "\n");
+	}
+	fclose(f);
+}
+
 int* ReadPath() {
 	FILE *f;
 	char fs[64];
@@ -138,76 +257,27 @@ void ReadVector(Vector *vk, Vector *vb) {
 	fclose(fb);
 }
 
-void CalcTB(char *type) {
-	FILE *fk, *fb, *f;
-	char fks[64], fbs[64], fs[64];
+void ReadE(Solution *s) {
+	FILE *fk, *fb;
+	char fks[32], fbs[32];
 
-	sprintf(fks, "input/hk%d_%s.bin", K, type);
-	sprintf(fbs, "input/hb_%s.bin", type);
-	sprintf(fs, "input/band_%s.txt", type);
+	sprintf(fks, "input/ek%d.bin", K);
+	sprintf(fbs, "input/eb.bin");
 
-	if((fk = fopen(fks, "wb")) == NULL) {
+	if((fk = fopen(fks, "rb")) == NULL) {
 		printf("%s fopen FAIL\n", fks);
 		exit(1);
 	}
-	if((fb = fopen(fbs, "wb")) == NULL) {
+	if((fb = fopen(fbs, "rb")) == NULL) {
 		printf("%s fopen FAIL\n", fbs);
 		exit(1);
 	}
-	if((f = fopen(fs, "w")) == NULL) {
-		printf("%s fopen FAIL\n", fs);
-		exit(1);
-	}
 
-	time_t t0 = time(NULL);
-
-	int i, j, l_len = 0;
-	char cell_type[8];
-	Vector vq, vk[K3], vb[BAND];
-	void (*Fourier)(int, int, Vector, Vector, Lattice*, lapack_complex_double*);
-
-	Lattice *l = ReadLattice(&l_len);
-	ReadInfo(type, cell_type, &vq);
-	ReadVector(vk, vb);
-
-	const int basis = strstr(cell_type, "s") ? SINGLE : DOUBLE;
-	lapack_complex_double hk[K3 * basis*basis], hb[BAND * basis*basis];
-
-	if(strstr(cell_type, "s")) Fourier = FourierS;
-	else Fourier = FourierD;
-
-	for(i=0; i<K3;   i++) Fourier(l_len, i, vk[i], vq, l, hk);
-	for(i=0; i<BAND; i++) Fourier(l_len, i, vb[i], vq, l, hb);
-
-	fwrite(hk, sizeof(hk), 1, fk);
-	fwrite(hb, sizeof(hb), 1, fb);
+	fread(s->ek, 2 * K3  , sizeof(lapack_complex_double), fk);
+	fread(s->eb, 2 * BAND, sizeof(lapack_complex_double), fb);
 
 	fclose(fk);
 	fclose(fb);
-
-	time_t t1 = time(NULL);
-	printf("%s(%s, %s) : %lds\n", __func__, fks, fbs, t1 - t0);
-
-	// make band
-	char jobz = 'V', uplo = 'L';
-	double rwork[3*basis-2], w[basis];
-	lapack_int ln = basis, lda = basis, lwork = 2*basis-1, info;
-	lapack_complex_double work[lwork], v[basis*basis];
-
-	for(i=0; i<BAND; i++) {
-		for(j=0; j<basis*basis; j++) v[j] = hb[basis*basis*i + j];
-
-		LAPACK_zheev(&jobz, &uplo, &ln, v, &lda, w, work, &lwork, rwork, &info);
-		if(info != 0) {
-			printf("LAPACK_zheev FAIL\n");
-			exit(1);
-		}
-
-		fprintf(f, "%4d", i);
-		for(j=0; j<basis; j++) fprintf(f, "%12f", w[j]);
-		fprintf(f, "\n");
-	}
-	fclose(f);
 }
 
 void ReadTB(Solution *s) {
@@ -235,8 +305,25 @@ void ReadTB(Solution *s) {
 
 void GetName(Solution *s, char *data_type, char *fs) {
 	sprintf(fs,\
-		   	"output/K%d_JU%.2f_SOC%.2f/%s_%s_N%.1f_U%.1f_n%f_m%f_fermi%f_e%f_%s.txt",\
-		   	K, s->JU, s->SOC, data_type, s->type, s->N, s->U, s->ntot, s->mtot, s->fermi, s->e, s->runtime);
+			"output/K%d_JU%.2f_SOC%.2f/%s_%s_N%.1f_U%.1f_n%f_m%f_fermi%f_e%f_%s.txt",\
+			K, s->JU, s->SOC, data_type, s->type, s->N, s->U, s->ntot, s->mtot, s->fermi, s->e, s->runtime);
+}
+
+void TransBasis(int e_len, lapack_complex_double *e, lapack_complex_double *v) {
+	int i, j, k;
+	lapack_complex_double va, vb;
+
+	for(i=0; i<e_len; i++) {
+		for(j=0; j<DOUBLE; j++) {
+			for(k=0; k<SINGLE; k++) {
+				va = sqrt(0.5) * e[2*i + 1] * (v[STATE_IDX + k] + v[STATE_IDX + k+OBT]);
+				vb = sqrt(0.5) * e[2*i + 0] * (v[STATE_IDX + k] - v[STATE_IDX + k+OBT]);
+
+				v[STATE_IDX + k] = va;
+				v[STATE_IDX + k+OBT] = vb;
+			}
+		}
+	}
 }
 
 Energy CalcEigen(Solution *s, int h_len, lapack_complex_double *h, double *w, lapack_complex_double *v) {
@@ -246,9 +333,9 @@ Energy CalcEigen(Solution *s, int h_len, lapack_complex_double *h, double *w, la
 	};
 
 	char jobz = 'V', uplo = 'L';
-	double rwork[3*s->basis-2], w_tmp[s->basis];
+	double rwork[3*s->basis-2], w_block[s->basis];
 	lapack_int ln = s->basis, lda = s->basis, lwork = 2*s->basis-1, info;
-	lapack_complex_double work[lwork], v_tmp[s->basis*s->basis];
+	lapack_complex_double work[lwork], v_block[s->basis*s->basis];
 	
 	int i, j;
 	void (*Interaction)(Solution*, lapack_complex_double*);
@@ -257,29 +344,28 @@ Energy CalcEigen(Solution *s, int h_len, lapack_complex_double *h, double *w, la
 	else Interaction = InteractionD;
 
 	for(i=0; i<h_len; i++) {
-		//memset(v_tmp, 0, sizeof(v_tmp));
-		for(j=0; j<s->basis*s->basis; j++) v_tmp[j] = h[s->basis*s->basis*i + j];
+		for(j=0; j<s->basis*s->basis; j++) v_block[j] = h[s->basis*s->basis*i + j];
 
-		Interaction(s, v_tmp);
+		Interaction(s, v_block);
 
-		LAPACK_zheev(&jobz, &uplo, &ln, v_tmp, &lda, w_tmp, work, &lwork, rwork, &info);
+		LAPACK_zheev(&jobz, &uplo, &ln, v_block, &lda, w_block, work, &lwork, rwork, &info);
 		if(info != 0) {
 			printf("LAPACK_zheev FAIL\n");
 			exit(1);
 		}
 
 		for(j=0; j<s->basis; j++) {
-			w[s->basis*i + j] = w_tmp[j];
+			w[s->basis*i + j] = w_block[j];
 		}
 		for(j=0; j<s->basis*s->basis; j++) {
-			v[s->basis*s->basis*i + j] = v_tmp[j];
+			v[s->basis*s->basis*i + j] = v_block[j];
 		}
 
-		if(w_tmp[0] < e.min) {
-			e.min = w_tmp[0];
+		if(w_block[0] < e.min) {
+			e.min = w_block[0];
 		}
-		if(w_tmp[s->basis-1] > e.max) {
-			e.max = w_tmp[s->basis-1];
+		if(w_block[s->basis-1] > e.max) {
+			e.max = w_block[s->basis-1];
 		}
 	}
 
@@ -301,15 +387,17 @@ void CalcSolution(Solution *s) {
 	double w[K3 * s->basis];
 	lapack_complex_double v[K3 * s->basis*s->basis];
 
-	int itr, i, is_cvg;
-	double fermi0, fermi1, e, n[OBT], m[OBT], ntot = 0, mtot = 0, cvg[OBT*3];
-	void (*Occupation)(double, double*, lapack_complex_double*, double*, double*, double*);
+	int itr, i, j, is_cvg;
+	double fermi0, fermi1, e, n[OBT], m[OBT], ntot = 0, mtot = 0, cvg[OBT][3];
+	void (*Occupation)(double, double*, lapack_complex_double*, lapack_complex_double*, double*, double*, double*);
 	Energy energy;
 
 	if(strstr(s->cell_type, "s")) Occupation = OccupationS;
 	else Occupation = OccupationD;
 
-	for(i=0; i<OBT*3; i++) cvg[i] = 100;
+	for(i=0; i<OBT; i++) {
+		for(j=0; j<3; j++) cvg[i][j] = 100;
+	}
 
 	fprintf(f, "%5s%12s%12s", "#itr", "fermi", "e");
 	for(i=0; i<OBT; i++) fprintf(f, "%10s%02d%10s%02d", "n", i+1, "m", i+1);
@@ -329,7 +417,7 @@ void CalcSolution(Solution *s) {
 			ntot = 0;
 			mtot = 0;
 
-			Occupation(s->fermi, w, v, n, m, &e);
+			Occupation(s->fermi, w, v, s->ek, n, m, &e);
 		
 			for(i=0; i<OBT; i++) {	
 				n[i] /= K3;
@@ -360,10 +448,9 @@ void CalcSolution(Solution *s) {
 			
 		is_cvg = 0;
 		for(i=0; i<OBT; i++) {
-			cvg[3*(itr%3) + i] = m[i];
-			if(fabs((cvg[3*0 + i] + cvg[3*1 + i] + cvg[3*2 + i])/3 - m[i]) < 1e-3) is_cvg++;
+			cvg[i][itr % 3] = m[i];
+			if(fabs((cvg[i][0] + cvg[i][1] + cvg[i][2])/3 - cvg[i][itr % 3]) < 1e-3) is_cvg++;
 		}
-
 		if(is_cvg == 3) break;
 	}
 
@@ -406,52 +493,50 @@ void MakeBand(Solution *s) {
 	time_t t1 = time(NULL);
 	printf("%s(%s) : %lds\n", __func__, fs, t1 - t0);
 
-	if(!strstr(s->cell_type, "s")) {
-		GetName(s, "ufw", fs);
+	if(!strstr(s->cell_type, "s")) MakeUfw(s, w, v);
+}
 
-		if((f = fopen(fs, "w")) == NULL) {
-			printf("%s fopen FAIL\n", fs);
-			exit(1);
-		}
+void MakeUfw(Solution *s, double *w, lapack_complex_double *v) {
+	FILE *f;
+	char fs[256];
+	GetName(s, "ufw", fs);
 
-		t0 = time(NULL);
-
-		int k;
-		double dot, p2;
-		Vector r[SUPER] = {{{1, 0, 0}}, {{0, 0, 0}}};	
-		lapack_complex_double exp[SUPER], p; 
-
-		fprintf(f, "%4s", "#");
-		for(i=0; i<s->basis; i++) fprintf(f, "%10s%02d", "w", i+1);
-		fprintf(f, "\n");
-		
-		for(i=0; i<BAND; i++) {
-			fprintf(f, "%4d", i);
-
-			for(j=0; j<SUPER; j++) {
-				dot = 0;
-				for(k=0; k<3; k++) dot += s->vb[i].k[k] * r[j].k[k];
-				exp[j] = cos(dot) - sin(dot) * I;
-			}
-
-			for(j=0; j<DOUBLE; j++) {
-				p2 = 0;
-
-				for(k=0; k<SINGLE; k++) {
-					p = v[DOUBLE*DOUBLE*i + DOUBLE*j + OBT*(k/OBT) + k] * exp[0] + v[DOUBLE*DOUBLE*i + DOUBLE*j + OBT*(k/OBT) + k+OBT] * exp[1];	
-					p2 += CSQR(p) / SUPER;
-				}
-				
-				fprintf(f, "%12f", p2); 
-			}
-			fprintf(f, "\n");
-		}
-
-		fclose(f);
-
-		t1 = time(NULL);
-		printf("%s(%s) : %lds\n", __func__, fs, t1 - t0);
+	if((f = fopen(fs, "w")) == NULL) {
+		printf("%s fopen FAIL\n", fs);
+		exit(1);
 	}
+
+	time_t t0 = time(NULL);
+
+	int i, j, k;
+	double p2;
+	lapack_complex_double p; 
+
+	TransBasis(BAND, s->eb, v);
+
+	fprintf(f, "%4s", "#");
+	for(i=0; i<s->basis; i++) fprintf(f, "%10s%02d", "w", i+1);
+	fprintf(f, "\n");
+
+	for(i=0; i<BAND; i++) {
+		fprintf(f, "%4d", i);
+
+		for(j=0; j<DOUBLE; j++) {
+			p2 = 0;
+
+			for(k=0; k<SINGLE; k++) {
+				p = v[STATE_IDX + k] * s->eb[2*i + 0] + v[STATE_IDX + k+OBT] * s->eb[2*i + 1];
+				p2 += CSQR(p) / SUPER;
+			}
+			fprintf(f, "%12f", p2); 
+		}
+		fprintf(f, "\n");
+	}
+
+	fclose(f);
+
+	time_t t1 = time(NULL);
+	printf("%s(%s) : %lds\n", __func__, fs, t1 - t0);
 }
 
 void MakeDos(Solution *s) {
@@ -473,6 +558,8 @@ void MakeDos(Solution *s) {
 	double energy, dos[s->basis];
 	Energy e = CalcEigen(s, K3, s->hk, w, v);
 
+	if(!strstr(s->cell_type, "s")) TransBasis(K3, s->ek, v);
+
 	e.min -= 0.1;
 	e.max += 0.1;
 	
@@ -480,11 +567,9 @@ void MakeDos(Solution *s) {
 	for(i=0; i<s->basis; i++) fprintf(f, "%10s%02d", "d", i+1);
 	fprintf(f, "\n");
 
-	for(itv=0; itv<512; itv++) {
-		for(i=0; i<s->basis; i++) {
-			dos[i] = 0;
-		}
-		energy = e.min + (e.max - e.min) * itv / 512;
+	for(itv=0; itv<256; itv++) {
+		memset(dos, 0, sizeof(dos));
+		energy = e.min + (e.max - e.min) * itv / 256;
 
 		for(i=0; i<K3*s->basis; i++) {
 			for(j=0; j<s->basis; j++) {
@@ -507,13 +592,19 @@ void MakeDos(Solution *s) {
 
 int main(int argc, char *argv[]) {
 	if(argc < 2) {
-		printf("%s v : make reciprocal lattice vectors\n%s tb <type> : make tight-binding matrix\n%s <type> <J/U> <SOC> <N> <U> : make Hartree-Fock approximated 3-band Hubbard model\n", argv[0], argv[0], argv[0]);
+		printf("%s v : make reciprocal lattice vectors\n%s e : make basis transform coefficients\n%s tb <type> : make tight-binding matrix\n%s <type> <J/U> <SOC> <N> <U> : make Hartree-Fock approximated 3-band Hubbard model\n", argv[0], argv[0], argv[0], argv[0]);
 		exit(1);
 	}
+
+	omp_set_num_threads(THREAD_NUM);
 
 	if(strstr(argv[1], "v")) {
 		CalcVK();
 		CalcVB();
+		return 0;
+	}
+	else if(strstr(argv[1], "e")) {
+		CalcE();
 		return 0;
 	}
 	else if(strstr(argv[1], "tb")) {
@@ -548,6 +639,7 @@ int main(int argc, char *argv[]) {
 		s.hk = (lapack_complex_double*)calloc(K3   * s.basis*s.basis, sizeof(lapack_complex_double));
 		s.hb = (lapack_complex_double*)calloc(BAND * s.basis*s.basis, sizeof(lapack_complex_double));
 		ReadTB(&s);
+		ReadE(&s);
 
 		CalcSolution(&s);
 

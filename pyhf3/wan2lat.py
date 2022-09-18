@@ -13,7 +13,7 @@ class Wan2Lat:
 
 		pat = 3*pat_site + 2*pat_obt + 2*pat_t
 
-		for line in wan:
+		for line in f_wan:
 			if re.search(pat, line): f_lat.write(line) 
 
 		f_wan.close()

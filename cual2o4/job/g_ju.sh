@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#$ -pe mpi 16
+#$ -pe mpi 1
 #$ -q openmp.q
 #$ -j y
 #$ -cwd
@@ -18,7 +18,7 @@ do
 	do
 		for u in `seq 0 1 9`
 		do
-			./baoso3 c $ju $SOC $n $u
+			./cual2o4 g $ju $SOC $n $u
 		done
 	done
 done

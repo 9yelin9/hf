@@ -10,8 +10,8 @@ class ML:
 
 		f_highsym.write('K,JU,SOC,type,N,U,fermi')
 		for pl in path_label:
-			for i in range(basis[1]): f_highsym.write(',w%s%d' % (pl, i))
-			for i in range(basis[1]): f_highsym.write(',e%s%d' % (pl, i))
+			for i in range(basis[1]):
+				f_highsym.write(',%s%d' % (pl, i))
 		f_highsym.write('\n')
 
 		dlist = ['%s/%s/%s' % (material, output, d) for d in os.listdir('%s/%s' % (material, output))\
@@ -30,21 +30,15 @@ class ML:
 				if type != 'f':
 					f_highsym.write('%s,%s,%s,%s,%s,%s,%s' % (K, JU, SOC, type, N, U, fermi))
 
-					f_band = open(fs, 'r')
-					f_ufw  = open(re.sub('band_', 'ufw_', fs), 'r')
-
-					data_band = np.genfromtxt(f_band)
-					data_ufw  = np.genfromtxt(f_ufw)
-
-					f_band.close()
-					f_ufw.close()
+					f = open(fs, 'r')
+					data = np.genfromtxt(f)
+					f.close()
 					
 					for p in path:
-						for vb in data_band[p][1:]: f_highsym.write(',%s' % (vb))
-						for vu in data_ufw[p][1:]:  f_highsym.write(',%s' % (vu))
+						for e in data[p][1:]:
+							f_highsym.write(',%s' % (e))
 					f_highsym.write('\n')
 
-					del data_band
-					del data_ufw
+					del data
 
 		f_highsym.close()

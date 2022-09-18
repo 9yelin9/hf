@@ -1,6 +1,6 @@
 CC = gcc
 RM = rm -rf
-DEFS = -DK=16 -DBAND=510
+DEFS = -DBAND=510
 USR_DIR = /home/9yelin9/usr
 OMP_DIR = /opt/mpi/gcc-4.8.5/openmpi-4.1.0/
 #CFLAGS = -O2 -Wall -mcmodel=medium -I$(USR_DIR)/include/lapacke -I$(OMP_DIR)/include -lm -llapack -fopenmp
