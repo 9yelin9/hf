@@ -8,7 +8,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pyhf3 import wan2lat
 from pyhf3 import ml
-from pyhf3 import check
 from pyhf3 import draw
 
 parser = argparse.ArgumentParser()
@@ -17,7 +16,6 @@ parser.add_argument('-out', '--output', type=str, default='output')
 
 parser.add_argument('-wl', '--wan2lat', type=int, default=None)
 parser.add_argument('-ml', '--ml', type=int, default=None)
-parser.add_argument('-ch', '--check', nargs='+', default=None, help='<JU> <SOC> <N4ch>')
 parser.add_argument('-dr', '--draw', nargs='+', default=None, help='<type> <JU> <SOC>')
 
 #parser.add_argument('-c', '--cvg', nargs='+', default=None, help='<N> <U>')
@@ -47,11 +45,6 @@ if args.ml:
 	m.Run(args.material, args.output, basis, path, path_label)
 	sys.exit()
 
-if args.check:
-	c = check.Check()
-	c.Run(args.material, args.output, args.check[0], args.check[1], args.check[2])
-	sys.exit()
-
 if args.draw:
 	d = draw.Draw(args.material, args.output, args.draw[0], args.draw[1], args.draw[2], basis, path, path_label)
 	#if args.cvg: d.DrawCvg(args.cvg[0], args.cvg[1])
@@ -62,11 +55,3 @@ if args.draw:
 	if args.cvg: d.DrawCvg(args.cvg[0], args.cvg[1])
 	if args.m : d.DrawM(args.m[0])
 	sys.exit()
-
-type_list = ['sa', 'sc', 'sg']
-JU_list = [0.0, 0.1, 0.2, 0.3]
-
-for type in type_list:
-	d = draw.Draw(args.material, args.output, type, 0.0, 0.0, basis, path, path_label)
-	d.DrawBandDos(6.0, 2.0)
-	d.DrawBandDos(8.0, 2.0)

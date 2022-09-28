@@ -1,399 +1,240 @@
 // hf3.c : universal functions for calculating hf3 model
 
-#define GREEN(i) (0.05 / (pow(energy - w[i], 2) + pow(0.05, 2))) 
-
 #include "hf3.h" 
 
-void CalcVK() {
+FILE* OpenFile(char *fs, char *ftype) {
 	FILE *f;
-	char fs[64];
 
-	sprintf(fs, "input/vk%d.bin", K);
-
-	if((f = fopen(fs, "wb")) == NULL) {
-		printf("%s fopen FAIL\n", fs);
+	if((f = fopen(fs, ftype)) == NULL) {
+		printf("%s fopen FAIL", fs);
 		exit(1);
 	}
 
-	int i;
-	Vector vk[K3];
-
-	for(i=0; i<K3; i++) {
-		vk[i].k[0] = -M_PI + 2*M_PI * (i / (K*K)) / K;
-		vk[i].k[1] = -M_PI + 2*M_PI * ((i / K) % K) / K;
-		vk[i].k[2] = -M_PI + 2*M_PI * (i % K) / K;
-	}
-
-	fwrite(vk, sizeof(vk), 1, f);
-	fclose(f);
+	return f;
 }
 
-inline void Product(int v_len, Vector *v, lapack_complex_double *e) {
+int GetLen(char *fs) {
+	FILE *f = OpenFile(fs, "r");
+
+	int len = 0;
+
+	fscanf(f, "%d", &len);
+	fclose(f);
+
+	return len;
+}
+
+void ShowBlock(int basis, lapack_complex_double *block) {
+	int i;
+
+	for(i=0; i<basis*basis; i++) {
+		if(i % basis == 0) printf("\n");
+		printf("%.3f\t", creal(block[i]));
+	}
+	printf("\n");
+}
+
+void GenName(Solution *s, char *data_type, char *fs) {
+	sprintf(fs,\
+			"output/JU%.2f_SOC%.2f/%s_%s_N%.1f_U%.1f_n%f_m%f_fermi%f_e%f_%s.txt",\
+			s->JU, s->SOC, data_type, s->type, s->N, s->U, s->ntot, s->mtot, s->fermi, s->e, s->runtime);
+}
+
+void DotProd(int g_len, Vector *g, lapack_complex_double *coef) {
 	int i, j, k;
 	double dot;
 	Vector r[SUPER] = {{{0, 0, 0}}, {{1, 0, 0}}};
 
-	for(i=0; i<v_len; i++) {
+	for(i=0; i<g_len; i++) {
 		for(j=0; j<SUPER; j++) {
 			dot = 0;
-			for(k=0; k<3; k++) dot += r[j].k[k] * v[i].k[k];
-			e[2*i + j] = cos(dot) - sin(dot) * I;
+			for(k=0; k<3; k++) dot += r[j].c[k] * g[i].c[k];
+			coef[2*i + j] = cos(dot) - sin(dot) * I;
 		}
 	}
 }
 
-void CalcE() {
-	FILE *fk, *fb;
-	char fks[64], fbs[64];
-
-	sprintf(fks, "input/ek%d.bin", K);
-	sprintf(fbs, "input/eb.bin");
-
-	if((fk = fopen(fks, "wb")) == NULL) {
-		printf("%s fopen FAIL\n", fks);
-		exit(1);
-	}
-	if((fb = fopen(fbs, "wb")) == NULL) {
-		printf("%s fopen FAIL\n", fbs);
-		exit(1);
-	}
-
-	Vector vk[K3], vb[BAND];
-	lapack_complex_double ek[2 * K3], eb[2 * BAND];
-
-	ReadVector(vk, vb);
-
-	Product(K3,   vk, ek);
-	Product(BAND, vb, eb);
-
-	fwrite(ek, sizeof(ek), 1, fk);
-	fwrite(eb, sizeof(eb), 1, fb);
-
-	fclose(fk);
-	fclose(fb);
-}
-
-void CalcTB(char *type) {
-	FILE *fk, *fb, *f;
-	char fks[64], fbs[64], fs[64];
-
-	sprintf(fks, "input/hk%d_%s.bin", K, type);
-	sprintf(fbs, "input/hb_%s.bin", type);
-	sprintf(fs, "input/band_%s.txt", type);
-
-	if((fk = fopen(fks, "wb")) == NULL) {
-		printf("%s fopen FAIL\n", fks);
-		exit(1);
-	}
-	if((fb = fopen(fbs, "wb")) == NULL) {
-		printf("%s fopen FAIL\n", fbs);
-		exit(1);
-	}
-	if((f = fopen(fs, "w")) == NULL) {
-		printf("%s fopen FAIL\n", fs);
-		exit(1);
-	}
-
-	time_t t0 = time(NULL);
-
-	int i, j, l_len = 0;
-	char cell_type[8];
-	Vector vq, vk[K3], vb[BAND];
-	void (*Fourier)(int, int, Vector, Vector, Lattice*, lapack_complex_double*);
-
-	Lattice *l = ReadLattice(&l_len);
-	ReadInfo(type, cell_type, &vq);
-	ReadVector(vk, vb);
-
-	const int basis = strstr(cell_type, "s") ? SINGLE : DOUBLE;
-	lapack_complex_double hk[K3 * basis*basis], hb[BAND * basis*basis];
-
-	if(strstr(cell_type, "s")) Fourier = FourierS;
-	else Fourier = FourierD;
-
-#pragma omp parallel for
-	for(i=0; i<K3;   i++) Fourier(l_len, i, vk[i], vq, l, hk);
-#pragma omp parallel for
-	for(i=0; i<BAND; i++) Fourier(l_len, i, vb[i], vq, l, hb);
-
-	fwrite(hk, sizeof(hk), 1, fk);
-	fwrite(hb, sizeof(hb), 1, fb);
-
-	fclose(fk);
-	fclose(fb);
-
-	time_t t1 = time(NULL);
-	printf("%s(%s, %s) : %lds\n", __func__, fks, fbs, t1 - t0);
-
-	// make band
-	char jobz = 'V', uplo = 'L';
-	double rwork[3*basis-2], w[basis];
-	lapack_int ln = basis, lda = basis, lwork = 2*basis-1, info;
-	lapack_complex_double work[lwork], v[basis*basis];
+void TransBasis(lapack_complex_double *coef, lapack_complex_double *es) {
+	int i, j, k;
+	lapack_complex_double es1, es2;
 
 	for(i=0; i<BAND; i++) {
-		for(j=0; j<basis*basis; j++) v[j] = hb[basis*basis*i + j];
-
-		LAPACK_zheev(&jobz, &uplo, &ln, v, &lda, w, work, &lwork, rwork, &info);
-		if(info != 0) {
-			printf("LAPACK_zheev FAIL\n");
-			exit(1);
-		}
-
-		fprintf(f, "%4d", i);
-		for(j=0; j<basis; j++) fprintf(f, "%12f", w[j]);
-		fprintf(f, "\n");
-	}
-	fclose(f);
-}
-
-int* ReadPath() {
-	FILE *f;
-	char fs[64];
-
-	sprintf(fs, "input/info.txt");
-
-	if((f = fopen(fs, "r")) == NULL) {
-		printf("%s fopen FAIL\n", fs);
-		exit(1);
-	}
-
-	int i, tmp = 0, sym_len, *sym;
-	char buf[1024];
-
-	fscanf(f, "%s", buf);
-	sym_len = atoi(buf);
-	sym = (int*)malloc(sym_len * sizeof(int));
-
-	for(i=0; i<sym_len; i++) {
-		fscanf(f, "%s", buf);	
-		sym[i] = atoi(buf) - tmp;
-		tmp = atoi(buf);
-	}
-	fclose(f);
-
-	return sym;
-}
-
-Lattice* ReadLattice(int *l_len) {
-	FILE *f;
-	char fs[64];
-
-	sprintf(fs, "input/lattice.txt");
-
-	if((f = fopen(fs, "r")) == NULL) {
-		printf("%s fopen FAIL\n", fs);
-		exit(1);
-	}
-
-	int i;
-	char buf[1024];
-
-	// get length of lattice.txt
-	while(!feof(f)) {
-		fgets(buf, sizeof(buf), f);
-		(*l_len)++;
-	}
-	rewind(f);
-
-	*l_len -= 1;
-
-	// read lattice.txt
-	Lattice *l = (Lattice*)malloc(*l_len * sizeof(Lattice));
-	for(i=0; i<*l_len; i++) {
-		fscanf(f, "%d%d%d%d%d%lf%lf", &l[i].r[0], &l[i].r[1], &l[i].r[2], &l[i].obt1, &l[i].obt2, &l[i].tre, &l[i].tim);
-	}
-	fclose(f);
-
-	return l;
-}
-
-void ReadInfo(char *type, char *cell_type, Vector *vq) {
-	FILE *f;
-	char fs[64];
-
-	sprintf(fs, "input/info.txt");
-
-	if((f = fopen(fs, "r")) == NULL) {
-		printf("%s fopen FAIL\n", fs);
-		exit(1);
-	}
-
-	int i;
-	char buf[1024], tmp[8];
-
-	while(!feof(f)) {
-		fgets(buf, sizeof(buf), f);
-		if(strstr(buf, type)) {
-			sscanf(buf, "%s%s%lf%lf%lf", tmp, cell_type, &vq->k[0], &vq->k[1], &vq->k[2]);
-			break;
-		}
-	}
-	fclose(f);
-
-	for(i=0; i<3; i++) vq->k[i] *= M_PI;
-}
-
-void ReadVector(Vector *vk, Vector *vb) {
-	FILE *fk, *fb;
-	char fks[64], fbs[64];
-
-	sprintf(fks, "input/vk%d.bin", K);
-	sprintf(fbs, "input/vb.bin");
-
-	if((fk = fopen(fks, "rb")) == NULL) {
-		printf("%s fopen FAIL\n", fks);
-		exit(1);
-	}
-	if((fb = fopen(fbs, "rb")) == NULL) {
-		printf("%s fopen FAIL\n", fbs);
-		exit(1);
-	}
-
-	fread(vk, K3,   sizeof(Vector), fk);
-	fread(vb, BAND, sizeof(Vector), fb);
-
-	fclose(fk);
-	fclose(fb);
-}
-
-void ReadE(Solution *s) {
-	FILE *fk, *fb;
-	char fks[32], fbs[32];
-
-	sprintf(fks, "input/ek%d.bin", K);
-	sprintf(fbs, "input/eb.bin");
-
-	if((fk = fopen(fks, "rb")) == NULL) {
-		printf("%s fopen FAIL\n", fks);
-		exit(1);
-	}
-	if((fb = fopen(fbs, "rb")) == NULL) {
-		printf("%s fopen FAIL\n", fbs);
-		exit(1);
-	}
-
-	fread(s->ek, 2 * K3  , sizeof(lapack_complex_double), fk);
-	fread(s->eb, 2 * BAND, sizeof(lapack_complex_double), fb);
-
-	fclose(fk);
-	fclose(fb);
-}
-
-void ReadTB(Solution *s) {
-	FILE *fk, *fb;
-	char fks[32], fbs[32];
-
-	sprintf(fks, "input/hk%d_%s.bin", K, s->type);
-	sprintf(fbs, "input/hb_%s.bin", s->type);
-
-	if((fk = fopen(fks, "rb")) == NULL) {
-		printf("%s fopen FAIL\n", fks);
-		exit(1);
-	}
-	if((fb = fopen(fbs, "rb")) == NULL) {
-		printf("%s fopen FAIL\n", fbs);
-		exit(1);
-	}
-
-	fread(s->hk, K3   * s->basis*s->basis, sizeof(lapack_complex_double), fk);
-	fread(s->hb, BAND * s->basis*s->basis, sizeof(lapack_complex_double), fb);
-
-	fclose(fk);
-	fclose(fb);
-}
-
-void GetName(Solution *s, char *data_type, char *fs) {
-	sprintf(fs,\
-			"output/K%d_JU%.2f_SOC%.2f/%s_%s_N%.1f_U%.1f_n%f_m%f_fermi%f_e%f_%s.txt",\
-			K, s->JU, s->SOC, data_type, s->type, s->N, s->U, s->ntot, s->mtot, s->fermi, s->e, s->runtime);
-}
-
-void TransBasis(int e_len, lapack_complex_double *e, lapack_complex_double *v) {
-	int i, j, k;
-	lapack_complex_double va, vb;
-
-	for(i=0; i<e_len; i++) {
 		for(j=0; j<DOUBLE; j++) {
 			for(k=0; k<SINGLE; k++) {
-				va = sqrt(0.5) * e[2*i + 1] * (v[STATE_IDX + k] + v[STATE_IDX + k+OBT]);
-				vb = sqrt(0.5) * e[2*i + 0] * (v[STATE_IDX + k] - v[STATE_IDX + k+OBT]);
+				es1 = sqrt(0.5) * coef[2*i + 1] * (es[STATE_IDX + k] + es[STATE_IDX + k+OBT]);
+				es2 = sqrt(0.5) * coef[2*i + 0] * (es[STATE_IDX + k] - es[STATE_IDX + k+OBT]);
 
-				v[STATE_IDX + k] = va;
-				v[STATE_IDX + k+OBT] = vb;
+				es[STATE_IDX + k] = es1;
+				es[STATE_IDX + k+OBT] = es2;
 			}
 		}
 	}
 }
 
-Energy CalcEigen(Solution *s, int h_len, lapack_complex_double *h, double *w, lapack_complex_double *v) {
-	Energy e = {
-		.min =  100,
-		.max = -100
-	};
+void CalcGauss() {
+	FILE *fg = OpenFile("input/gg.bin", "wb"), *fw = OpenFile("input/wg.bin", "wb");
 
-	char jobz = 'V', uplo = 'L';
-	double rwork[3*s->basis-2], w_block[s->basis];
-	lapack_int ln = s->basis, lda = s->basis, lwork = 2*s->basis-1, info;
-	lapack_complex_double work[lwork], v_block[s->basis*s->basis];
-	
+	int i, i0, i1, i2;
+	double g[GAUSS], w[GAUSS], wg[GAUSS3];
+	Vector gg[GAUSS3];
+	gsl_integration_glfixed_table *t = gsl_integration_glfixed_table_alloc(GAUSS);
+
+	for(i=0; i<GAUSS; i++) gsl_integration_glfixed_point(-M_PI, M_PI, i, &g[i], &w[i], t);
+
+	for(i=0; i<GAUSS3; i++) {
+		i0 = i / (GAUSS * GAUSS);
+		i1 =(i / GAUSS) % GAUSS;
+		i2 = i % GAUSS;
+
+		gg[i].c[0] = g[i0];
+		gg[i].c[1] = g[i1];
+		gg[i].c[2] = g[i2];
+		wg[i] = w[i0] * w[i1] * w[i2];
+	}
+
+	fwrite(gg, sizeof(gg), 1, fg);
+	fwrite(wg, sizeof(wg), 1, fw);
+	fclose(fg);
+	fclose(fw);
+}
+
+void CalcCoef() {
+	FILE *fg = OpenFile("input/coefg.bin", "wb"), *fb = OpenFile("input/coefb.bin", "wb");
+	Vector gg[GAUSS3], gb[BAND];
+	lapack_complex_double coefg[2 * GAUSS3], coefb[2 * BAND];
+
+	ReadBin("input/gg.bin", sizeof(Vector) * GAUSS3, gg);
+	ReadBin("input/gb.bin", sizeof(Vector) * BAND, gb);
+
+	DotProd(GAUSS3, gg, coefg);
+	DotProd(BAND, gb, coefb);
+
+	fwrite(coefg, sizeof(coefg), 1, fg);
+	fwrite(coefb, sizeof(coefb), 1, fb);
+	fclose(fg);
+	fclose(fb);
+}
+
+void CalcTB(char *type) {
+	FILE *fg, *fb, *f;
+	char fgs[64], fbs[64], fs[64];
+
+	sprintf(fgs, "input/tbg_%s.bin", type);
+	sprintf(fbs, "input/tbb_%s.bin", type);
+	sprintf(fs, "input/band_%s.txt", type);
+
+	fg = OpenFile(fgs, "wb");
+	fb = OpenFile(fbs, "wb");
+	f  = OpenFile(fs,  "w");
+
+	time_t t0 = time(NULL);
+
 	int i, j;
-	void (*Interaction)(Solution*, lapack_complex_double*);
+	char ctype[8];
+	Vector q, gg[GAUSS3], gb[BAND];
+	void (*Fourier)(int, int, Lattice*, Vector, Vector, lapack_complex_double*);
 
-	if(strstr(s->cell_type, "s")) Interaction = InteractionS;
-	else Interaction = InteractionD;
+	ReadInfo(type, ctype, &q);
+	ReadBin("input/gg.bin", sizeof(Vector) * GAUSS3, gg);
+	ReadBin("input/gb.bin", sizeof(Vector) * BAND, gb);
 
-	for(i=0; i<h_len; i++) {
-		for(j=0; j<s->basis*s->basis; j++) v_block[j] = h[s->basis*s->basis*i + j];
+	const int l_len = GetLen("input/lattice.txt");
+	Lattice l[l_len];
+	ReadLattice(l_len, l);
 
-		Interaction(s, v_block);
+	const int basis = strstr(ctype, "s") ? SINGLE : DOUBLE;
+	lapack_complex_double tbg[basis*basis * GAUSS3], tbb[basis*basis * BAND];
+	Fourier = strstr(ctype, "s") ? FourierS : FourierD;
 
-		LAPACK_zheev(&jobz, &uplo, &ln, v_block, &lda, w_block, work, &lwork, rwork, &info);
-		if(info != 0) {
+#pragma omp parallel for
+	for(i=0; i<GAUSS3; i++) Fourier(l_len, i, l, gg[i], q, tbg);
+#pragma omp parallel for
+	for(i=0; i<BAND; i++) Fourier(l_len, i, l, gb[i], q, tbb);
+
+	fwrite(tbg, sizeof(tbg), 1, fg);
+	fwrite(tbb, sizeof(tbb), 1, fb);
+	fclose(fg);
+	fclose(fb);
+
+	time_t t1 = time(NULL);
+	printf("%s(%s, %s) : %lds\n", __func__, fgs, fbs, t1 - t0);
+
+	// make band
+	LParameter lp = {
+		.jobz = 'V',
+		.uplo = 'L',
+		.rwork = (double*)malloc((3*basis-2) * sizeof(double)),
+		.ln = basis,
+		.lda = basis,
+		.lwork = 2*basis-1,
+		.work = (lapack_complex_double*)malloc(lp.lwork * sizeof(lapack_complex_double))
+	};
+	double ev[basis * BAND];
+	lapack_complex_double es[basis*basis * BAND];
+
+	for(i=0; i<BAND; i++) {
+		for(j=0; j<basis*basis; j++) es[j] = tbb[basis*basis*i + j];
+
+		LAPACK_zheev(&lp.jobz, &lp.uplo, &lp.ln, es, &lp.lda, ev, lp.work, &lp.lwork, lp.rwork, &lp.info);
+		if(lp.info != 0) {
 			printf("LAPACK_zheev FAIL\n");
 			exit(1);
 		}
 
-		for(j=0; j<s->basis; j++) {
-			w[s->basis*i + j] = w_block[j];
-		}
-		for(j=0; j<s->basis*s->basis; j++) {
-			v[s->basis*s->basis*i + j] = v_block[j];
-		}
-
-		if(w_block[0] < e.min) {
-			e.min = w_block[0];
-		}
-		if(w_block[s->basis-1] > e.max) {
-			e.max = w_block[s->basis-1];
-		}
+		fprintf(f, "%4d", i);
+		for(j=0; j<basis; j++) fprintf(f, "%12f", ev[j]);
+		fprintf(f, "\n");
 	}
-
-	return e;
+	fclose(f);
 }
 
-void CalcSolution(Solution *s) {
+void CalcEigen(Solution *s, LParameter *lp, int tb_len, lapack_complex_double *tb, double *ev, lapack_complex_double *es, Energy *e) {
+	e->min =  100;
+	e->max = -100;
+
+	int i, j;
+	double ev_block[s->basis];
+	lapack_complex_double tb_block[s->basis*s->basis];
+	void (*Interaction)(Solution*, lapack_complex_double*);
+
+	Interaction = strstr(s->ctype, "s") ? InteractionS : InteractionD;
+
+	for(i=0; i<tb_len; i++) {
+		for(j=0; j<s->basis*s->basis; j++) tb_block[j] = tb[s->basis*s->basis*i + j];
+
+		Interaction(s, tb_block);
+
+		LAPACK_zheev(&lp->jobz, &lp->uplo, &lp->ln, tb_block, &lp->lda, ev_block, lp->work, &lp->lwork, lp->rwork, &lp->info);
+		if(lp->info != 0) {
+			printf("LAPACK_zheev FAIL\n");
+			exit(1);
+		}
+
+		for(j=0; j<s->basis; j++) ev[s->basis*i + j] = ev_block[j];
+		for(j=0; j<s->basis*s->basis; j++) es[s->basis*s->basis*i + j] = tb_block[j];
+
+		if(ev_block[0] < e->min) e->min = ev_block[0];
+		if(ev_block[s->basis-1] > e->max) e->max = ev_block[s->basis-1];
+	}
+}
+
+void CalcSolution(Solution *s, LParameter *lp, lapack_complex_double *tbg) {
 	FILE *f;
 	char fs[256];
-	GetName(s, "cvg", fs);
 
-	if((f = fopen(fs, "w")) == NULL) {
-		printf("%s fopen FAIL\n", fs);
-		exit(1);
-	}
+	GenName(s, "sol", fs);
+	f = OpenFile(fs, "w");
 
 	time_t t0 = time(NULL);
 
-	double w[K3 * s->basis];
-	lapack_complex_double v[K3 * s->basis*s->basis];
-
 	int itr, i, j, is_cvg;
-	double fermi0, fermi1, e, n[OBT], m[OBT], ntot = 0, mtot = 0, cvg[OBT][3];
-	void (*Occupation)(double, double*, lapack_complex_double*, lapack_complex_double*, double*, double*, double*);
+	double wg[GAUSS3], ev[s->basis * GAUSS3], fermi0, fermi1, e, n[OBT], m[OBT], ntot = 0, mtot = 0, cvg[OBT][3];
 	Energy energy;
+	lapack_complex_double es[s->basis*s->basis * GAUSS3];
+	void (*GaussQuad)(double, double*, double*, lapack_complex_double*, double*, double*, double*);
 
-	if(strstr(s->cell_type, "s")) Occupation = OccupationS;
-	else Occupation = OccupationD;
+	GaussQuad = strstr(s->ctype, "s") ? GaussQuadS : GaussQuadD;
+	ReadBin("input/wg.bin", sizeof(double) * GAUSS3, wg);
 
 	for(i=0; i<OBT; i++) {
 		for(j=0; j<3; j++) cvg[i][j] = 100;
@@ -408,7 +249,7 @@ void CalcSolution(Solution *s) {
 	fprintf(f, "%12f%12f\n", s->ntot, s->mtot);
 
 	for(itr=0; itr<50; itr++) {
-		energy = CalcEigen(s, K3, s->hk, w, v);
+		CalcEigen(s, lp, GAUSS3, tbg, ev, es, &energy);
 		fermi0 = energy.min;
 		fermi1 = energy.max;
 		s->fermi = 0.5 * (fermi0 + fermi1);
@@ -417,15 +258,15 @@ void CalcSolution(Solution *s) {
 			ntot = 0;
 			mtot = 0;
 
-			Occupation(s->fermi, w, v, s->ek, n, m, &e);
+			GaussQuad(s->fermi, wg, ev, es, n, m, &e);
 		
 			for(i=0; i<OBT; i++) {	
-				n[i] /= K3;
-				m[i] /= K3;
+				n[i] /= pow(2*M_PI , 3);
+				m[i] /= pow(2*M_PI , 3);
 				ntot += n[i];
 				mtot += m[i];
 			}
-			s->e = e / K3;
+			e /= pow(2*M_PI, 3);
 
 			if(fabs(ntot - s->N) < 1e-6) break;
 			else {
@@ -460,23 +301,77 @@ void CalcSolution(Solution *s) {
 	printf("%s(%s) : %lds\n", __func__, fs, t1 - t0);
 }
 
-void MakeBand(Solution *s) {
+void ReadPathInfo(int sym_len, int *sym) {
+	FILE *f = OpenFile("input/info.txt", "r");
+
+	int i, path, tmp = 0;
+	char buf[1024];
+
+	fgets(buf, sizeof(buf), f);
+
+	for(i=0; i<sym_len; i++) {
+		fscanf(f, "%d", &path);	
+		sym[i] = path - tmp;
+		tmp = path;
+	}
+	fclose(f);
+}
+
+void ReadLattice(int l_len, Lattice *l) {
+	FILE *f = OpenFile("input/lattice.txt", "r");
+
+	int i;
+	char buf[1024];
+
+	fgets(buf, sizeof(buf), f);
+
+	for(i=0; i<l_len; i++) {
+		fscanf(f,\
+				"%d%d%d%d%d%lf%lf",\
+				&l[i].c[0], &l[i].c[1], &l[i].c[2], &l[i].obt1, &l[i].obt2, &l[i].tre, &l[i].tim);
+	}
+	fclose(f);
+}
+
+void ReadInfo(char *type, char *ctype, Vector *q) {
+	FILE *f = OpenFile("input/info.txt", "r");
+
+	int i;
+	char buf[1024], tmp[8];
+
+	while(fgets(buf, sizeof(buf), f)) {
+		if(strstr(buf, type)) {
+			sscanf(buf, "%s%s%lf%lf%lf", tmp, ctype, &q->c[0], &q->c[1], &q->c[2]);
+			break;
+		}
+	}
+	fclose(f);
+
+	for(i=0; i<3; i++) q->c[i] *= M_PI;
+}
+
+void ReadBin(char *fs, int bin_size, void *bin) {
+	FILE *f = OpenFile(fs, "rb");
+
+	fread(bin, bin_size, 1, f);
+	fclose(f);
+}
+
+void MakeBand(Solution *s, LParameter *lp, lapack_complex_double *tbb) {
 	FILE *f;
 	char fs[256];
-	GetName(s, "band", fs);
 
-	if((f = fopen(fs, "w")) == NULL) {
-		printf("%s fopen FAIL\n", fs);
-		exit(1);
-	}
+	GenName(s, "band", fs);
+	f = OpenFile(fs, "w");
 
 	time_t t0 = time(NULL);
 
 	int i, j;
-	double w[BAND * s->basis];
-	lapack_complex_double v[BAND * s->basis*s->basis];
+	double ev[s->basis * BAND];
+	Energy energy;
+	lapack_complex_double es[s->basis*s->basis * BAND];
 
-	CalcEigen(s, BAND, s->hb, w, v);
+	CalcEigen(s, lp, BAND, tbb, ev, es, &energy);
 
 	fprintf(f, "%4s", "#");
 	for(i=0; i<s->basis; i++) fprintf(f, "%10s%02d", "e", i+1);
@@ -484,7 +379,7 @@ void MakeBand(Solution *s) {
 
 	for(i=0; i<BAND; i++) {
 		fprintf(f, "%4d", i);
-		for(j=0; j<s->basis; j++) fprintf(f, "%12f", w[s->basis*i + j]);
+		for(j=0; j<s->basis; j++) fprintf(f, "%12f", ev[s->basis*i + j]);
 		fprintf(f, "\n");
 	}
 
@@ -493,26 +388,24 @@ void MakeBand(Solution *s) {
 	time_t t1 = time(NULL);
 	printf("%s(%s) : %lds\n", __func__, fs, t1 - t0);
 
-	if(!strstr(s->cell_type, "s")) MakeUfw(s, w, v);
+	if(!strstr(s->ctype, "s")) MakeUFW(s, ev, es);
 }
 
-void MakeUfw(Solution *s, double *w, lapack_complex_double *v) {
+void MakeUFW(Solution *s, double *ev, lapack_complex_double *es) {
 	FILE *f;
 	char fs[256];
-	GetName(s, "ufw", fs);
 
-	if((f = fopen(fs, "w")) == NULL) {
-		printf("%s fopen FAIL\n", fs);
-		exit(1);
-	}
+	GenName(s, "ufw", fs);
+	f = OpenFile(fs, "w");
 
 	time_t t0 = time(NULL);
 
 	int i, j, k;
 	double p2;
-	lapack_complex_double p; 
+	lapack_complex_double coefb[2 * BAND], p; 
 
-	TransBasis(BAND, s->eb, v);
+	ReadBin("input/coefb.bin", sizeof(lapack_complex_double) * 2 * BAND, coefb);
+	TransBasis(coefb, es);
 
 	fprintf(f, "%4s", "#");
 	for(i=0; i<s->basis; i++) fprintf(f, "%10s%02d", "w", i+1);
@@ -525,7 +418,7 @@ void MakeUfw(Solution *s, double *w, lapack_complex_double *v) {
 			p2 = 0;
 
 			for(k=0; k<SINGLE; k++) {
-				p = v[STATE_IDX + k] * s->eb[2*i + 0] + v[STATE_IDX + k+OBT] * s->eb[2*i + 1];
+				p = es[STATE_IDX + k] * coefb[2*i + 0] + es[STATE_IDX + k+OBT] * coefb[2*i + 1];
 				p2 += CSQR(p) / SUPER;
 			}
 			fprintf(f, "%12f", p2); 
@@ -539,29 +432,30 @@ void MakeUfw(Solution *s, double *w, lapack_complex_double *v) {
 	printf("%s(%s) : %lds\n", __func__, fs, t1 - t0);
 }
 
-void MakeDos(Solution *s) {
+void MakeDOS(Solution *s, LParameter *lp, lapack_complex_double *tbg) {
 	FILE *f;
 	char fs[256];
-	GetName(s, "dos", fs);
 
-	if((f = fopen(fs, "w")) == NULL) {
-		printf("%s fopen FAIL\n", fs);
-		exit(1);
-	}
+	GenName(s, "dos", fs);
+	f = OpenFile(fs, "w");
 
 	time_t t0 = time(NULL);
 
-	double w[K3 * s->basis];
-	lapack_complex_double v[K3 * s->basis*s->basis];
-
 	int itv, i, j;
-	double energy, dos[s->basis];
-	Energy e = CalcEigen(s, K3, s->hk, w, v);
+	double ev[s->basis * GAUSS3], e, dos[s->basis];
+	Energy energy;
+	lapack_complex_double es[s->basis*s->basis * GAUSS3];
+	
+	CalcEigen(s, lp, GAUSS3, tbg, ev, es, &energy);
 
-	if(!strstr(s->cell_type, "s")) TransBasis(K3, s->ek, v);
+	if(!strstr(s->ctype, "s")) {
+		lapack_complex_double coefg[2* GAUSS3];
+		ReadBin("input/coefg.bin", sizeof(lapack_complex_double) * 2 * GAUSS3, coefg);
+		TransBasis(coefg, es);
+	}
 
-	e.min -= 0.1;
-	e.max += 0.1;
+	energy.min -= 1.0;
+	energy.max += 1.0;
 	
 	fprintf(f, "%12s", "#e");
 	for(i=0; i<s->basis; i++) fprintf(f, "%10s%02d", "d", i+1);
@@ -569,17 +463,17 @@ void MakeDos(Solution *s) {
 
 	for(itv=0; itv<256; itv++) {
 		memset(dos, 0, sizeof(dos));
-		energy = e.min + (e.max - e.min) * itv / 256;
+		e = energy.min + (energy.max - energy.min) * itv / 256;
 
-		for(i=0; i<K3*s->basis; i++) {
+		for(i=0; i<GAUSS3*s->basis; i++) {
 			for(j=0; j<s->basis; j++) {
-				dos[j] += M_PI * CSQR(v[s->basis*i + j]) * GREEN(i);
+				dos[j] += CSQR(es[s->basis*i + j]) * GREEN(i);
 			}
 		}
 
-		fprintf(f, "%12f", energy);
+		fprintf(f, "%12f", e);
 		for(i=0; i<s->basis; i++) {
-			fprintf(f, "%12f", dos[i] / K3);
+			fprintf(f, "%12f", dos[i] / pow(2*M_PI, 3));
 		}
 		fprintf(f, "\n");
 	}
@@ -592,19 +486,16 @@ void MakeDos(Solution *s) {
 
 int main(int argc, char *argv[]) {
 	if(argc < 2) {
-		printf("%s v : make reciprocal lattice vectors\n%s e : make basis transform coefficients\n%s tb <type> : make tight-binding matrix\n%s <type> <J/U> <SOC> <N> <U> : make Hartree-Fock approximated 3-band Hubbard model\n", argv[0], argv[0], argv[0], argv[0]);
+		printf("%s in : make reciprocal lattice vectors and basis transform coefficients\n%s tb <type> : make tight-binding matrix\n%s <type> <J/U> <SOC> <N> <U> : make Hartree-Fock approximated 3-band Hubbard model\n", argv[0], argv[0], argv[0]);
 		exit(1);
 	}
 
-	omp_set_num_threads(THREAD_NUM);
+	omp_set_num_threads(OMP_THREAD);
 
-	if(strstr(argv[1], "v")) {
-		CalcVK();
-		CalcVB();
-		return 0;
-	}
-	else if(strstr(argv[1], "e")) {
-		CalcE();
+	if(strstr(argv[1], "in")) {
+		CalcGauss();
+		CalcBandPath();
+		CalcCoef();
 		return 0;
 	}
 	else if(strstr(argv[1], "tb")) {
@@ -612,6 +503,9 @@ int main(int argc, char *argv[]) {
 		return 0;
 	}
 	else {
+		time_t t = time(NULL);
+		struct tm *tm = localtime(&t);
+
 		Solution s = {
 			.type = argv[1],
 			.JU = atof(argv[2]),
@@ -628,26 +522,36 @@ int main(int argc, char *argv[]) {
 			.e = 100
 		};
 
-		ReadInfo(s.type, s.cell_type, &s.vq);
-		ReadVector(s.vk, s.vb);
-		s.basis = strstr(s.cell_type, "s") ? SINGLE : DOUBLE;
-
-		time_t t = time(NULL);
-		struct tm *tm = localtime(&t);
 		sprintf(s.runtime, "%d%d%d%d", tm->tm_mon+1, tm->tm_mday, tm->tm_hour, tm->tm_min); 
 
-		s.hk = (lapack_complex_double*)calloc(K3   * s.basis*s.basis, sizeof(lapack_complex_double));
-		s.hb = (lapack_complex_double*)calloc(BAND * s.basis*s.basis, sizeof(lapack_complex_double));
-		ReadTB(&s);
-		ReadE(&s);
+		ReadInfo(s.type, s.ctype, &s.q);
+		s.basis = strstr(s.ctype, "s") ? SINGLE : DOUBLE;
 
-		CalcSolution(&s);
+		LParameter lp = {
+			.jobz = 'V',
+			.uplo = 'L',
+			.rwork = (double*)malloc((3*s.basis-2) * sizeof(double)),
+			.ln = s.basis,
+			.lda = s.basis,
+			.lwork = 2*s.basis-1,
+			.work = (lapack_complex_double*)malloc(lp.lwork * sizeof(lapack_complex_double))
+		};
+		lapack_complex_double tbg[s.basis*s.basis * GAUSS3], tbb[s.basis*s.basis * BAND];
+		char tbgs[64], tbbs[64];
 
-		MakeBand(&s);
-		MakeDos(&s);
+		sprintf(tbgs, "input/tbg_%s.bin", s.type);
+		sprintf(tbbs, "input/tbb_%s.bin", s.type);
 
-		free(s.hk);
-		free(s.hb);
+		ReadBin(tbgs, sizeof(lapack_complex_double) * s.basis*s.basis * GAUSS3, tbg);
+		ReadBin(tbbs, sizeof(lapack_complex_double) * s.basis*s.basis * BAND, tbb);
+
+		CalcSolution(&s, &lp, tbg);
+
+		MakeBand(&s, &lp, tbb);
+		MakeDOS(&s, &lp, tbg);
+
+		free(lp.rwork);
+		free(lp.work);
 
 		return 0;
 	}

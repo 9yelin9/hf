@@ -8,16 +8,19 @@
 export PATH="/home/9yelin9/usr/bin:$PATH"
 export LD_LIBRARY_PATH="/usr/lib:/usr/lib64:/usr/slib:/home/9yelin9/usr/lib:/home/9yelin9/usr/lib64:$LD_LIBRARY_PATH"
 
+module load openmpi/gcc-4.8.5/4.1.0
+module load gsl/gcc-4.8.5/2.7.1
+
 t0=$(date +%s.%N)
 t0_string=$(date)
 
 JU=0
 SOC=0
-for n in `seq 0.0 1.0 6.0`
+for n in `seq 0.2 0.2 11.8`
 do
-	for u in `seq 0 1 10`
+	for u in `seq 0 1 9`
 	do
-		./baoso3 f $JU $SOC $n $u
+		./baoso3 a $JU $SOC $n $u
 	done
 done
 

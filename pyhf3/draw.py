@@ -19,13 +19,12 @@ class Draw:
 		self.path = path
 		self.path_label = path_label
 
-		self.K = 16
 		self.obt = 3
 		self.basis = self.bases[0] if re.search('f', type) else self.bases[1]
 		self.tol = 0.01
 
-		self.dir = '%s/%s/K%d_JU%.2f_SOC%.2f/' % (material, output, self.K, self.JU, self.SOC)
-		self.title = '%s K=%d J/U=%.2f SOC=%.2f\n' % (type, self.K, self.JU, self.SOC)
+		self.dir = '%s/%s/JU%.2f_SOC%.2f/' % (material, output, self.JU, self.SOC)
+		self.title = '%s J/U=%.2f SOC=%.2f\n' % (type, self.JU, self.SOC)
 		self.colors=['tab:blue', 'tab:green', 'tab:red']
 		self.labels=['xy', 'yz', 'zx']
 		self.markers = ['s', 'o', '^']
@@ -240,11 +239,11 @@ class Draw:
 		fig.savefig('%s/phase_%s.png' % (re.sub('output', 'diagram', self.dir), self.type))
 		plt.show()
 
-	def DrawCvg(self, N, U):
+	def DrawSol(self, N, U):
 		N = float(N)
 		U = float(U)
 
-		fs = [f for f in os.listdir(self.dir) if re.search('cvg_%s_N%.1f_U%.1f' % (self.type, N, U), f)][0]
+		fs = [f for f in os.listdir(self.dir) if re.search('sol_%s_N%.1f_U%.1f' % (self.type, N, U), f)][0]
 
 		f = open(self.dir + fs, 'r')
 		data = np.genfromtxt(f)

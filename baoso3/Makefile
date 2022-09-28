@@ -1,12 +1,12 @@
 CC = gcc
 RM = rm -rf
-DEFS = -DBAND=510
+DEFS = -DGAUSS=32 -DBAND=510
 USR_DIR = /home/9yelin9/usr
 OMP_DIR = /opt/mpi/gcc-4.8.5/openmpi-4.1.0/
-#CFLAGS = -O2 -Wall -mcmodel=medium -I$(USR_DIR)/include/lapacke -I$(OMP_DIR)/include -lm -llapack -fopenmp
-CFLAGS = -g -O2 -Wall -mcmodel=medium $(DEFS) -I$(USR_DIR)/include/lapacke -I$(OMP_DIR)/include -lm -llapack -fopenmp
-LDFLAGS = -mcmodel=medium -L$(USR_DIR)/lib64 -L$(OMP_DIR)/lib
-LINKS = -lm -llapack -fopenmp
+GSL_DIR = /opt/gsl/
+CFLAGS = -g -O2 -Wall -mcmodel=medium $(DEFS) -I$(USR_DIR)/include/lapacke -I$(OMP_DIR)/include -I$(GSL_DIR)/include -fopenmp
+LDFLAGS = -mcmodel=medium -L$(USR_DIR)/lib64 -L$(OMP_DIR)/lib -L$(GSL_DIR)/lib -fopenmp 
+LINKS = -lm -llapack -lgsl -lgslcblas
 OBJS = ../hf3.o baoso3.o 
 TARGET = baoso3
 

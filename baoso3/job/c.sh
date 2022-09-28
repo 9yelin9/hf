@@ -14,15 +14,13 @@ module load gsl/gcc-4.8.5/2.7.1
 t0=$(date +%s.%N)
 t0_string=$(date)
 
+JU=0
 SOC=0
-for ju in `seq 0.1 0.1 0.3`
+for n in `seq 0.2 0.2 11.8`
 do
-	for n in `seq 0.2 0.2 11.8`
+	for u in `seq 0 1 9`
 	do
-		for u in `seq 0 1 9`
-		do
-			./baoso3 a $ju $SOC $n $u
-		done
+		./baoso3 c $JU $SOC $n $u
 	done
 done
 
