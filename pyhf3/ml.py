@@ -3,42 +3,57 @@
 import re
 import os
 import numpy as np
+import pandas as pd
+from .read import ReadFs
 
-class ML:
-	def Run(self, material, output, basis, path, path_label):
-		f_highsym = open('%s/%s/highsym.csv' % (material, output), 'w')
+def MakeMLData(output_path, path_info, type_info, tol):
+	f = open('%s/highsym.csv' % output_path, 'w')
 
-		f_highsym.write('K,JU,SOC,type,N,U,fermi')
-		for pl in path_label:
-			for i in range(basis[1]):
-				f_highsym.write(',%s%d' % (pl, i))
-		f_highsym.write('\n')
+	f.write('JU,SOC,type,N,U,dntop,gap')
+	for path_point, path_label in path_info:
+		for i in range(type_info['a']):
+			f.write(',e%s%d' % (path_label, i))
+		for i in range(type_info['a']):
+			f.write(',w%s%d' % (path_label, i))
+	f.write('\n')
 
-		dlist = ['%s/%s/%s' % (material, output, d) for d in os.listdir('%s/%s' % (material, output))\
-				if os.path.isdir('%s/%s/%s' % (material, output, d))]	
-		
-		for d in dlist:
-			for fs in ['%s/%s' % (d, fs) for fs in os.listdir(d) if re.match('band_', fs)]:
-				K     = re.sub('K', '', re.search('K\d+', d).group())	
-				JU    = re.sub('_JU', '', re.search('_JU\d+[.]\d+', d).group())	
-				SOC   = re.sub('_SOC', '', re.search('_SOC\d+[.]\d+', d).group())	
-				type  = re.sub('band_', '', re.search('band_[a-z]+', fs).group())	
-				N     = re.sub('_N', '', re.search('_N\d+[.]\d+', fs).group())	
-				U     = re.sub('_U', '', re.search('_U\d+[.]\d+', fs).group())	
-				fermi = re.sub('_fermi', '', re.search('_fermi[-]?\d+[.]\d+', fs).group())	
+	dlist = [output_path + d for d in os.listdir(output_path) if os.path.isdir(output_path + d)]	
+	path_info[-1][0] -= 1
 
-				if type != 'f':
-					f_highsym.write('%s,%s,%s,%s,%s,%s,%s' % (K, JU, SOC, type, N, U, fermi))
+	for d in dlist:
+		fs_list = [d +'/'+ fs for fs in os.listdir(d) if re.match('band_', fs)]
+		df = pd.DataFrame()
 
-					f = open(fs, 'r')
-					data = np.genfromtxt(f)
-					f.close()
-					
-					for p in path:
-						for e in data[p][1:]:
-							f_highsym.write(',%s' % (e))
-					f_highsym.write('\n')
+		for i, fs in enumerate(fs_list):
+			fs_dict = ReadFs(fs)
+			data = pd.DataFrame([[fs_dict['type'][0], fs_dict['N'], fs_dict['U'], fs_dict['e']]], columns=['type', 'N', 'U', 'e'])
+			df = pd.concat([df, data], sort=False)
 
-					del data
+		# drop higher energy
+		df = df.reset_index(drop=True)
+		df = df[df['type'] != 'f']
+		df = df.sort_values(by='e')
+		df = df.drop_duplicates(subset=['type', 'N', 'U'], keep='first')
+		idx_list = df.index.to_list()
 
-		f_highsym.close()
+		for i in idx_list:
+			fs = fs_list[i]
+			fs_dict = ReadFs(fs)
+
+			f.write('%.2f,%.2f,%s,%.1f,%.1f,%f,%f'\
+					% (fs_dict['JU'], fs_dict['SOC'], fs_dict['type'][0], fs_dict['N'], fs_dict['U'], fs_dict['dntop'], fs_dict['gap']))
+			
+			fe = open(fs, 'r')
+			fw = open(re.sub('band_', 'ufw_', fs), 'r')
+			datae = np.genfromtxt(fe)
+			dataw = np.genfromtxt(fw)
+			fe.close()
+			fw.close()
+
+			for path_point, path_label in path_info:
+				for e in datae[path_point][1:]:
+					f.write(',%s' % (e))
+				for w in dataw[path_point][1:]:
+					f.write(',%s' % (w))
+			f.write('\n')
+	f.close()

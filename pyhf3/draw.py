@@ -7,57 +7,59 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+from .read import ReadFs
 
 class Draw:
-	def __init__(self, material, output, type, JU, SOC, basis, path, path_label):
-		self.material = material
-		self.output = output
-		self.type = type
+	def __init__(self, input_path, output_path, path_info, type_info, JU, SOC, tol):
+		self.input_path = input_path
+		self.path_point = [path_point for path_point, path_label in path_info]
+		self.path_label = [path_label for path_point, path_label in path_info]
+		self.type_info = type_info
 		self.JU = float(JU)
 		self.SOC = float(SOC)
-		self.bases = basis
-		self.path = path
-		self.path_label = path_label
+		self.tol = tol
 
 		self.obt = 3
-		self.basis = self.bases[0] if re.search('f', type) else self.bases[1]
-		self.tol = 0.01
 
-		self.dir = '%s/%s/JU%.2f_SOC%.2f/' % (material, output, self.JU, self.SOC)
-		self.title = '%s J/U=%.2f SOC=%.2f\n' % (type, self.JU, self.SOC)
+		self.dir = '%s/JU%.2f_SOC%.2f/' % (output_path, self.JU, self.SOC)
 		self.colors=['tab:blue', 'tab:green', 'tab:red']
 		self.labels=['xy', 'yz', 'zx']
 		self.markers = ['s', 'o', '^']
 		self.lss = ['-', '--', '-.']
-	
-	def DrawBandTest(self):
-		fs = [f for f in os.listdir('%s/input/' % (self.material)) if re.search('band_%s.txt' % (self.type), f)][0]
 
-		f = open('%s/input/%s' % (self.material, fs), 'r')
+		os.makedirs(re.sub('output', 'diagram', self.dir), exist_ok=True)
+	
+	def DrawBandTest(self, type):
+		basis = self.type_info[type[0]]
+		fs = [f for f in os.listdir(self.input_path) if re.search('band_%s.txt' % (type), f)][0]
+
+		f = open(self.input_path + fs, 'r')
 		data = np.genfromtxt(f)
 		f.close()
 
 		fig, ax = plt.subplots()
 
-		for i in range(1, self.basis+1):
+		for i in range(1, basis+1):
 			ax.plot(data[:, 0], data[:, i], color='tab:blue')
 
 		ax.grid(True)
-		ax.set_xticks(self.path)
+		ax.set_xticks(self.path_point)
 		ax.set_xticklabels(self.path_label)
 		ax.set_xlabel('Path')
 		ax.set_ylabel('Energy')
-		ax.set_title('%s/input/%s' % (self.material, fs))
+		ax.set_title(self.input_path + fs)
 		plt.show()
 	
-	def DrawBand(self, N, U, ax):
+	def DrawBand(self, type, N, U, ax):
 		N = float(N)
 		U = float(U)
 
-		fs = [f for f in os.listdir(self.dir) if re.search('band_%s_N%.1f_U%.1f' % (self.type, N, U), f)][0]
-		fermi = float(re.sub('_fermi', '', re.search('_fermi[-]?\d+[.]\d+', fs).group()))
+		basis = self.type_info[type[0]]
+		fs = [self.dir + f for f in os.listdir(self.dir) if re.search('band_%s_N%.1f_U%.1f' % (type, N, U), f)][0]
+		fs_dict = ReadFs(fs)
+		fermi = fs_dict['fermi']
 
-		f = open(self.dir + fs, 'r')
+		f = open(fs, 'r')
 		data = np.genfromtxt(f)
 		f.close()
 
@@ -66,11 +68,11 @@ class Draw:
 
 		ax.axhline(y=0.0, ls=':', lw=2, color='dimgrey')
 
-		for i in range(1, self.basis+1):
+		for i in range(1, basis+1):
 			ax.plot(data[:, 0], data[:, i] - fermi, color='tab:blue')
 
 		ax.grid(True)
-		ax.set_xticks(self.path)
+		ax.set_xticks(self.path_point)
 		ax.set_xticklabels(self.path_label)
 		ax.set_xlabel('Path')
 		ax.set_ylabel('Energy')
@@ -78,15 +80,17 @@ class Draw:
 
 		return e_min, e_max, fs 
 	
-	def DrawBandUF(self, N, U, ax):
+	def DrawBandUnfold(self, type, N, U, ax):
 		N = float(N)
 		U = float(U)
 
-		fs = [f for f in os.listdir(self.dir) if re.search('band_%s_N%.1f_U%.1f' % (self.type, N, U), f)][0]
-		fermi = float(re.sub('_fermi', '', re.search('_fermi[-]?\d+[.]\d+', fs).group()))
+		basis = self.type_info[type[0]]
+		fs = [self.dir + f for f in os.listdir(self.dir) if re.search('band_%s_N%.1f_U%.1f' % (type, N, U), f)][0]
+		fs_dict = ReadFs(fs)
+		fermi = fs_dict['fermi']
 
-		f_band = open(self.dir + fs, 'r')
-		f_ufw  = open(self.dir + re.sub('band_', 'ufw_', fs), 'r')
+		f_band = open(fs, 'r')
+		f_ufw  = open(re.sub('band_', 'ufw_', fs), 'r')
 
 		data_e = np.genfromtxt(f_band)
 		data_w = np.genfromtxt(f_ufw)
@@ -100,12 +104,12 @@ class Draw:
 		norm = plt.Normalize(0, 1)
 		ax.axhline(y=0.0, ls=':', lw=2, color='dimgrey')
 
-		for i in range(1, self.basis+1):
+		for i in range(1, basis+1):
 			ax.plot(data_e[:, 0], data_e[:, i] - fermi, linewidth=1, color='gray', alpha=0.5)
 			ax.scatter(data_e[:, 0], data_e[:, i] - fermi, c=data_w[:, i], s=(10*(data_w[:, i]))**2, cmap='Blues', norm=norm)
 
 		"""
-		for i in range(1, self.basis+1):
+		for i in range(1, basis+1):
 			points = np.array([data_e[:, 0], data_e[:, i] - fermi]).T.reshape(-1, 1, 2)
 			segments = np.concatenate([points[:-1], points[1:]], axis=1)
 			norm = plt.Normalize(0, 1)
@@ -116,7 +120,7 @@ class Draw:
 		"""
 
 		ax.grid(True)
-		ax.set_xticks(self.path)
+		ax.set_xticks(self.path_point)
 		ax.set_xticklabels(self.path_label)
 		ax.set_xlabel('Path')
 		ax.set_ylabel('Energy')
@@ -124,15 +128,15 @@ class Draw:
 
 		return e_min, e_max, fs
 
-	def DrawDos(self, N, U, ax, e_min=None, e_max=None):
+	def DrawDos(self, type, N, U, ax, e_min=None, e_max=None):
 		N = float(N)
 		U = float(U)
 
-		fs = [f for f in os.listdir(self.dir) if re.search('dos_%s_N%.1f_U%.1f' % (self.type, N, U), f)][0]
-		fermi = float(re.sub('_fermi', '', re.search('_fermi[-]?\d+[.]\d+', fs).group()))
-		title = self.dir + fs
+		fs = [self.dir + f for f in os.listdir(self.dir) if re.search('dos_%s_N%.1f_U%.1f' % (type, N, U), f)][0]
+		fs_dict = ReadFs(fs, 'dos')
+		fermi = fs_dict['fermi']
 
-		f = open(self.dir + fs, 'r')
+		f = open(fs, 'r')
 		data = np.genfromtxt(f)
 		f.close()
 
@@ -140,7 +144,6 @@ class Draw:
 		if e_max == None: e_max = np.max(data[:, 0]) - fermi
 
 		dos_max = np.max(data[:, 1:])
-		#dos_max = 1
 
 		ax.axhline(y=0.0, ls=':', lw=2, color='dimgrey')
 		
@@ -158,72 +161,72 @@ class Draw:
 		ax.yaxis.tick_right()
 		ax.legend()
 	
-	def DrawBandDos(self, N, U, is_unfold=0):
+	def DrawBandDos(self, type, N, U, is_unfold=0):
 		N = float(N)
 		U = float(U)
 
 		fig, ax = plt.subplots(1, 2, gridspec_kw={'width_ratios': [3, 1]}, figsize=(10, 6))
 
-		if not is_unfold: e_min, e_max, fs = self.DrawBand(N, U, ax[0])
-		else: e_min, e_max, fs = self.DrawBandUF(N, U, ax[0])
+		if not is_unfold: e_min, e_max, fs = self.DrawBand(type, N, U, ax[0])
+		else: e_min, e_max, fs = self.DrawBandUnfold(type, N, U, ax[0])
 
-		self.DrawDos(N, U, ax[1], e_min, e_max)
+		self.DrawDos(type, N, U, ax[1], e_min, e_max)
 
-		fs_s = fs.split(sep='_')
-		fs_s = [s for s in fs_s if re.search('[a-zA-Z]+\d+[.]\d+', s)]
-
-		title = self.title
-		for s in fs_s:
-			s_name = re.search('[a-zA-Z]+', s).group()
-			s_val = re.search('[-]?\d+[.]\d+', s).group()
-			title += '%s=%s ' % (s_name, s_val)
-
-		plt.suptitle(title)
+		plt.suptitle(re.sub('/b', '\nb', fs))
 		fig.tight_layout()
 
-		if  not is_unfold: fig.savefig('%s/%s' % (re.sub('output', 'diagram', self.dir), re.sub('txt', 'png', fs)))
-		else: fig.savefig('%s/%s' % (re.sub('output', 'diagram', self.dir), re.sub('band', 'banduf', re.sub('txt', 'png', fs))))
+		if  not is_unfold: fig.savefig('%s' % (re.sub('output', 'diagram', re.sub('txt', 'png', fs))))
+		else: fig.savefig('%s' % (re.sub('output', 'diagram', re.sub('band', 'banduf', re.sub('txt', 'png', fs)))))
 
 		plt.show()
 
-	def DrawPhase(self):
-		fs_list    = ['%s%s' % (self.dir, fs) for fs in os.listdir(self.dir) if re.match('band_%s' % (self.type), fs)]
-		N_list     = [float(re.sub('_N', '', re.search('_N\d+[.]\d+', fs).group())) for fs in fs_list]
-		U_list     = [float(re.sub('_U', '', re.search('_U\d+[.]\d+', fs).group())) for fs in fs_list]
-		m_list     = [float(re.sub('_m', '', re.search('_m[-]?\d+[.]\d+', fs).group())) for fs in fs_list]
-		fermi_list = [float(re.sub('_fermi', '', re.search('_fermi[-]?\d+[.]\d+', fs).group())) for fs in fs_list]
+	def DrawBandCheck(self, type):
+		fig, ax = plt.subplots(5, 2, gridspec_kw={'width_ratios': [3, 1]}, figsize=(5, 10))
 
-		N = np.unique(N_list)
-		U = np.unique(list(map(int, U_list)))
+		U = 9
+		for i, N in enumerate([2, 4, 6, 8, 10]):
+			e_min, e_max, fs = self.DrawBand(type, N, U, ax[i][0])
+			self.DrawDos(N, U, ax[i][1], e_min, e_max)
+			ax[i][0].set_title('N=%d' % (N), loc='left')
+			ax[i][1].legend().remove()
+
+		plt.suptitle(self.dir + type)
+		fig.tight_layout()
+		plt.show()
+
+	def DrawPhase(self, type):
+		basis = self.type_info[type[0]]
+		fs_list = [self.dir + fs for fs in os.listdir(self.dir) if re.match('band_%s' % type, fs)]
+		N_list = []
+		U_list = []
+
+		for fs in fs_list:
+			fs_dict = ReadFs(fs)
+			N_list.append(fs_dict['N'])
+			U_list.append(fs_dict['U'])
+
+		N = sorted(list(set(N_list)))
+		U = sorted(list(set(U_list)))
 		m = np.zeros((len(U), len(N)))
-		gap_tol = 5
 
 		N_ins = []
 		U_ins = []
 
-		for i, fs in enumerate(fs_list):
-			f = open(fs, 'r')
-			data = np.genfromtxt(f)[:, 1:]
-			f.close()
+		for fs in fs_list:
+			fs_dict = ReadFs(fs)
+			m[U.index(fs_dict['U'])][N.index(fs_dict['N'])] = abs(fs_dict['m'])
 
-			if len(np.where(np.abs(U - U_list[i]) < 1e-6)[0]): 
-				m[np.where(np.abs(U - U_list[i]) < 1e-6)[0][0]][np.where(np.abs(N - N_list[i]) < 1e-6)[0][0]] = m_list[i]
-
-			is_cdt = len(data[np.where(np.abs(data - fermi_list[i]) < self.tol)])
-
-			if not is_cdt:
-				N_ins.append(N_list[i])
-				U_ins.append(U_list[i])
-
-			del data
+			if fs_dict['gap'] > self.tol:
+				N_ins.append(fs_dict['N'])
+				U_ins.append(fs_dict['U'])
 
 		fig, ax = plt.subplots()
 
 		#cs = ax.contour(N, U, Z, levels=10, cmap='binary_r')
 		#plt.clabel(cs)
 		plt.grid(True, alpha=0.5)
-		cb = ax.contourf(N, U, m, cmap='Blues_r')
-		plt.colorbar(cb, label='Magnetization (M)')
+		cb = ax.contourf(N, U, m, levels=np.linspace(0, basis/2, 10), cmap='Blues_r')
+		plt.colorbar(cb, label='Magnetization (M)', format='%.1f')
 		ax.scatter(N_ins, U_ins, marker='+', color='black', label='Insulater')
 
 		for n_ins in np.unique(N_ins):
@@ -234,22 +237,67 @@ class Draw:
 		ax.set_xlabel('Occupation (N)')
 		ax.set_ylabel('Interaction (U)')
 		ax.legend(fontsize=8, loc='lower left')
-		plt.suptitle(self.dir + self.type)	
+		plt.suptitle(self.dir + type)	
 		fig.tight_layout()
-		fig.savefig('%s/phase_%s.png' % (re.sub('output', 'diagram', self.dir), self.type))
+		fig.savefig('%s/phase_%s.png' % (re.sub('output', 'diagram', self.dir), type))
 		plt.show()
 
-	def DrawSol(self, N, U):
+	def DrawPhaseCheck(self, type1, type2):
+		fs1_list = [self.dir + fs for fs in os.listdir(self.dir) if re.match('band_%s' % type1, fs)]
+		fs2_list = [self.dir + fs for fs in os.listdir(self.dir) if re.match('band_%s' % type2, fs)]
+		N_list = []
+		U_list = []
+
+		for fs in fs1_list:
+			fs_dict = ReadFs(fs)
+			N_list.append(fs_dict['N'])
+			U_list.append(fs_dict['U'])
+
+		N = sorted(list(set(N_list)))
+		U = sorted(list(set(U_list)))
+		m1 = np.zeros((len(U), len(N)))
+		m2 = np.zeros((len(U), len(N)))
+		e1 = np.zeros((len(U), len(N)))
+		e2 = np.zeros((len(U), len(N)))
+
+		for fs1, fs2 in zip(fs1_list, fs2_list):
+			fs1_dict = ReadFs(fs1)
+			fs2_dict = ReadFs(fs2)
+			m1[U.index(fs1_dict['U'])][N.index(fs1_dict['N'])] = fs1_dict['m']
+			m2[U.index(fs2_dict['U'])][N.index(fs2_dict['N'])] = fs2_dict['m']
+			e1[U.index(fs1_dict['U'])][N.index(fs1_dict['N'])] = fs1_dict['e']
+			e2[U.index(fs2_dict['U'])][N.index(fs2_dict['N'])] = fs2_dict['e']
+
+		s1 = []
+		s2 = []
+		for i, n in enumerate(N):
+			for j, u in enumerate(U):
+				if (m1[j][i] > 0.1) and (m2[j][i] > 0.1):
+					if e1[j][i] < e2[j][i]: s1.append([n, u])	
+					else: s2.append([n, u])
+
+		fig, ax = plt.subplots()
+
+		plt.grid(True, alpha=0.5)
+		ax.scatter(np.array(s1)[:, 0], np.array(s1)[:, 1], label=type1)
+		ax.scatter(np.array(s2)[:, 0], np.array(s2)[:, 1], label=type2)
+		ax.legend()
+		plt.suptitle(self.dir + type1 + type2)	
+		fig.tight_layout()
+		fig.savefig('%s/phasec_%s%s.png' % (re.sub('output', 'diagram', self.dir), type1, type2))
+		plt.show()
+
+	def DrawSolution(self, type, N, U):
 		N = float(N)
 		U = float(U)
 
-		fs = [f for f in os.listdir(self.dir) if re.search('sol_%s_N%.1f_U%.1f' % (self.type, N, U), f)][0]
+		fs = [self.dir + f for f in os.listdir(self.dir) if re.search('sol_%s_N%.1f_U%.1f' % (type, N, U), f)][0]
 
-		f = open(self.dir + fs, 'r')
+		f = open(fs, 'r')
 		data = np.genfromtxt(f)
 		f.close()
 
-		if re.search('f', self.type):
+		if re.search('f', type):
 			n_max = 2.1
 			m_max = 1.1
 			m_min = -1.1
@@ -260,14 +308,14 @@ class Draw:
 
 		fig, ax = plt.subplots(1, 2, figsize=(10, 6))
 
-		for i in [3, 5, 7]:
-			ax[0].plot(data[:, 0], data[:, i],   ls=self.lss[int(i/2)-1], marker=self.markers[int(i/2)-1], ms=abs(i-10), color=self.colors[int(i/2)-1], label=self.labels[int(i/2)-1])
-			ax[1].plot(data[:, 0], data[:, i+1], ls=self.lss[int(i/2)-1], marker=self.markers[int(i/2)-1], ms=abs(i-10), color=self.colors[int(i/2)-1], label=self.labels[int(i/2)-1])
+		for i, n in enumerate([2, 4, 6]):
+			ax[0].plot(data[:, 0], data[:, n],   lw=abs(i-4), ls=self.lss[i], marker=self.markers[i], ms=abs(n-10), color=self.colors[i], label=self.labels[i])
+			ax[1].plot(data[:, 0], data[:, n+1], lw=abs(i-4), ls=self.lss[i], marker=self.markers[i], ms=abs(n-10), color=self.colors[i], label=self.labels[i])
 
 		ax[0].grid(True)
 		ax[0].set_xlabel('Iteration')
 		ax[0].set_ylabel('Occupation per orbital')
-		ax[0].set_ylim(0, n_max)
+		ax[0].set_ylim(-0.1, n_max)
 		ax[0].legend()
 
 		ax[1].grid(True)
@@ -279,53 +327,7 @@ class Draw:
 		fs_s = fs.split(sep='_')
 		fs_s = [s for s in fs_s if re.search('[a-zA-Z]+\d+[.]\d+', s)]
 
-		title = self.title
-		for s in fs_s:
-			s_name = re.search('[a-zA-Z]+', s).group()
-			s_val = re.search('[-]?\d+[.]\d+', s).group()
-			title += '%s=%s ' % (s_name, s_val)
-
-		plt.suptitle(title)
+		plt.suptitle(re.sub('/s', '\ns', fs))
 		fig.tight_layout()
-		fig.savefig('%s/%s' % (re.sub('output', 'diagram', self.dir), re.sub('band', 'banduf', re.sub('txt', 'png', fs))))
-		plt.show()
-
-	def DrawM(self, N):
-		fs_list    = ['%s%s' % (self.dir, fs) for fs in os.listdir(self.dir) if re.match('band_%s_N%s' % (self.type, N), fs)]
-		U_list     = [float(re.sub('_U', '', re.search('_U\d+[.]\d+', fs).group())) for fs in fs_list]
-		m_list     = [float(re.sub('_m', '', re.search('_m[-]?\d+[.]\d+', fs).group())) for fs in fs_list]
-		fermi_list = [float(re.sub('_fermi', '', re.search('_fermi[-]?\d+[.]\d+', fs).group())) for fs in fs_list]
-
-		U = np.unique(list(map(int, U_list)))
-		m = np.zeros(len(U))
-		gap_tol = 5
-
-		U_ins = []
-		m_ins = []
-
-		for i, fs in enumerate(fs_list):
-			f = open(fs, 'r')
-			data = np.genfromtxt(f)[:, 1:]
-			f.close()
-
-			is_cdt = len(data[np.where(np.abs(data - fermi_list[i]) < self.tol)])
-
-			if not is_cdt:
-				U_ins.append(U_list[i])
-				m_ins.append(m_list[i])
-
-			del data
-
-		fig, ax = plt.subplots()
-
-		plt.grid(True, alpha=0.5)
-		ax.plot(U_list, m_list, '.-', ms=10, zorder=1)
-		ax.scatter(U_ins, m_ins, color='tab:orange', label='Insulater', zorder=2)
-
-		ax.set_xlabel('Interaction (U)')
-		ax.set_ylabel('Magnetization (m)')
-		ax.legend(fontsize=8, loc='upper left')
-		plt.suptitle(self.dir + self.type + '_N%s' % (N))	
-		fig.tight_layout()
-		fig.savefig('%s/m_%s_N%s.png' % (re.sub('output', 'diagram', self.dir), self.type, N))
+		fig.savefig('%s' % (re.sub('output', 'diagram', re.sub('txt', 'png', fs))))
 		plt.show()

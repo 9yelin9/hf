@@ -6,52 +6,68 @@ import sys
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
-from pyhf3 import wan2lat
-from pyhf3 import ml
+from pyhf3.read import ReadInfo
+from pyhf3.wan2lat import TransWan2Lat
+from pyhf3.ml import MakeMLData
 from pyhf3 import draw
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-mat', '--material', type=str, default='baoso3')
-parser.add_argument('-out', '--output', type=str, default='output')
+parser.add_argument('-w2l',  type=int,  default=None)
+parser.add_argument('-ml',   type=int,  default=None)
+parser.add_argument('-draw', nargs='+', default=None, help='<JU> <SOC>')
 
-parser.add_argument('-wl', '--wan2lat', type=int, default=None)
-parser.add_argument('-ml', '--ml', type=int, default=None)
-parser.add_argument('-dr', '--draw', nargs='+', default=None, help='<type> <JU> <SOC>')
+parser.add_argument('-n', '--name', type=str, default='baoso3', help='<solid_name>')
 
-#parser.add_argument('-c', '--cvg', nargs='+', default=None, help='<N> <U>')
-parser.add_argument('-b', '--band', nargs='+', default=None, help='<N> <U>')
-parser.add_argument('-u', '--banduf', nargs='+', default=None, help='<N> <U>')
-parser.add_argument('-t', '--bandtest', type=int, default=None)
-parser.add_argument('-p', '--phase', type=int, default=None)
-parser.add_argument('-c', '--cvg', nargs='+', default=None, help='<N> <U>')
-parser.add_argument('-m', nargs='+', default=None, help='<N>')
+parser.add_argument('-b',  '--band',       nargs='+', default=None, help='<type> <N> <U>')
+parser.add_argument('-bu', '--bandunfold', nargs='+', default=None, help='<type> <N> <U>')
+parser.add_argument('-bt', '--bandtest',   nargs='+', default=None, help='<type>')
+parser.add_argument('-bc', '--bandcheck',  nargs='+', default=None, help='<type>')
+parser.add_argument('-p',  '--phase',      nargs='+', default=None, help='<type>')
+parser.add_argument('-pc', '--phasecheck', nargs='+', default=None, help='<type1> <type2>')
+parser.add_argument('-s',  '--solution',   nargs='+', default=None, help='<type> <N> <U>')
 args = parser.parse_args()
 
-f_info = open('%s/input/info.txt' % (args.material), 'r')
-path_num   = f_info.readline()
-path       = list(map(int, f_info.readline().strip().split(' ')))
-path_label = f_info.readline().strip().split(' ')
-f_info.close()
+# set input_path and output_path
+input_path = 'input/%s/' % args.name
+output_path = 'output/%s/' % args.name
 
-basis = [6, 12]
+# set path_info, type_info 
+path_info, type_info = ReadInfo(input_path)
+for key, val in type_info.items():
+	if val == 's': type_info[key] = 6
+	else: type_info[key] = 12
 
-if args.wan2lat:
-	w = wan2lat.Wan2Lat()
-	w.Run(args.material)
+# set tol
+tol = 0.1
+
+# wan2lat
+if args.w2l:
+	TransWan2Lat(input_path)
 	sys.exit()
 
+# ml
 if args.ml:
-	m = ml.ML()
-	m.Run(args.material, args.output, basis, path, path_label)
+	MakeMLData(output_path, path_info, type_info, tol)
 	sys.exit()
 
+# draw
 if args.draw:
-	d = draw.Draw(args.material, args.output, args.draw[0], args.draw[1], args.draw[2], basis, path, path_label)
-	#if args.cvg: d.DrawCvg(args.cvg[0], args.cvg[1])
-	if args.band: d.DrawBandDos(args.band[0], args.band[1])
-	if args.banduf: d.DrawBandDos(args.banduf[0], args.banduf[1], 1)
-	if args.bandtest: d.DrawBandTest()
-	if args.phase: d.DrawPhase()
-	if args.cvg: d.DrawCvg(args.cvg[0], args.cvg[1])
-	if args.m : d.DrawM(args.m[0])
+	d = draw.Draw(input_path, output_path, path_info, type_info, args.draw[0], args.draw[1], tol)
+	if args.band: d.DrawBandDos(args.band[0], args.band[1], args.band[2])
+	if args.bandunfold: d.DrawBandDos(args.bandunfold[0], args.bandunfold[1], args.bandunfold[2], 1)
+	if args.bandtest: d.DrawBandTest(args.bandtest[0])
+	if args.bandcheck : d.DrawBandCheck(args.bandcheck[0])
+	if args.phase: d.DrawPhase(args.phase[0])
+	if args.phasecheck: d.DrawPhaseCheck(args.phasecheck[0], args.phasecheck[1])
+	if args.solution: d.DrawSolution(args.solution[0], args.solution[1], args.solution[2])
 	sys.exit()
+
+######################################################################################################################
+
+type = ['a1', 'a2', 'c1', 'c2', 'g']
+JU = [0, 0.1, 0.2, 0.3]
+
+for t in type:
+	for ju in JU:
+		d = draw.Draw(output_path, path_info, type_info, ju, 0, tol)
+		d.DrawPhase(t)
