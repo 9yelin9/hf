@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #$ -pe mpi 1
-#$ -q openmp.q@phase06
+#$ -q openmp.q@phase07
 #$ -j y
 #$ -cwd
 #$ -o log/$JOB_NAME.log
@@ -11,10 +11,8 @@ source /home/9yelin9/.bash_profile
 t0=$(date +%s.%N)
 t0_string=$(date)
 
-./mod/init baoso3 f
-./mod/init baoso3 a
-./mod/init baoso3 c
-./mod/init baoso3 g
+./mod/init cual2o4 f 
+./mod/init cual2o4 a
 
 t1=$(date +%s.%N)
 t1_string=$(date)

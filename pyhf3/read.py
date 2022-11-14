@@ -3,26 +3,27 @@
 import re
 import os
 import numpy as np
+import pandas as pd
 
 def ReadInfo(input_path):
-	f = open('%s/info.txt' % (input_path), 'r')
+	f_path = open('%s/path.txt' % (input_path), 'r')
+	f_cell = open('%s/cell.txt' % (input_path), 'r')
 
-	path_len = int(f.readline())
-	path_point = f.readline().strip().split(' ')
-	path_label = f.readline().strip().split(' ')
-	path_info = [[int(point), label] for point, label in zip(path_point, path_label)]
+	path = f_path.readline()
+	path_point = re.findall('\d+', path)
+	path_label = re.findall('[A-Z]+', path)
+	info_path = [[int(point), label] for point, label in zip(path_point, path_label)]
+	f_path.close()
 
-	type_info = {}
-	line = f.readline()
+	info_cell = {}
 	while 1:
-		line = f.readline()
+		line = f_cell.readline()
 		if not line: break
 		lines = line.strip().split(' ')
-		type_info[lines[0]] = lines[1]
+		info_cell[lines[0]] = [int(lines[3]), int(lines[4])]
+	f_cell.close()
 
-	f.close()
-
-	return path_info, type_info
+	return info_path, info_cell
 
 def ReadFs(fs, dtype='band'):
 	JU    = re.sub('JU',           '', re.search('JU\d+[.]\d+',               fs).group())	
@@ -41,3 +42,22 @@ def ReadFs(fs, dtype='band'):
 			'n': float(n), 'm': float(m), 'e': float(e), 'fermi': float(fermi), 'dntop': float(dntop), 'gap': float(gap)}
 	
 	return info_dict
+
+def MakeGroundIdx(fs_list, exclude_f=False):
+	df = pd.DataFrame()
+
+	for fs in fs_list:
+		fs_dict = ReadFs(fs)
+		data = pd.DataFrame([[fs_dict['type'], fs_dict['N'], fs_dict['U'], fs_dict['n'], fs_dict['e']]], columns=['type', 'N', 'U', 'n', 'e'])
+		df = pd.concat([df, data], sort=False)
+
+	df = df.reset_index(drop=True)
+	if exclude_f: df = df[df['type'] != 'f']
+	df = df[abs(df['N'] - df['n']) < 1e-2] # delete unreliable data
+
+	# drop higher energy
+	df = df.sort_values(by=['N', 'U', 'e', 'type'])
+	df = df.drop_duplicates(subset=['N', 'U'], keep='first')
+	idx_list = df.index.to_list()
+	
+	return idx_list

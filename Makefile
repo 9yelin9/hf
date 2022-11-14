@@ -1,5 +1,4 @@
-MAKE = make
-DIRS = lib hf3
+DIRS = lib mod
 
 .PHONY: all clean dep
 .SUFFIXES : .c .o
@@ -7,11 +6,17 @@ DIRS = lib hf3
 all :
 	@for d in $(DIRS); \
 	do \
-		$(MAKE) -C $$d; \
+		make -C $$d; \
 	done
 
 clean :
 	@for d in $(DIRS); \
 	do \
-		$(MAKE) -C $$d clean; \
+		make -C $$d clean; \
+	done
+
+dep :
+	@for d in $(DIRS); \
+	do \
+		make -C $$d dep; \
 	done

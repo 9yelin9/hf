@@ -11,10 +11,17 @@ source /home/9yelin9/.bash_profile
 t0=$(date +%s.%N)
 t0_string=$(date)
 
-./mod/init baoso3 f
-./mod/init baoso3 a
-./mod/init baoso3 c
-./mod/init baoso3 g
+SOC=0
+for ju in `seq 0.0 0.1 0.3`
+do
+	for n in `seq 0.2 0.2 11.8`
+	do
+		for u in `seq 0 0.5 5.0`
+		do
+			./mod/hf3 baoso3 a $ju $SOC $n $u
+		done
+	done
+done
 
 t1=$(date +%s.%N)
 t1_string=$(date)

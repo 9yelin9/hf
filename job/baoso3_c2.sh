@@ -1,16 +1,12 @@
 #!/bin/bash
 
 #$ -pe mpi 1
-#$ -q openmp.q
+#$ -q openmp.q@phase06
 #$ -j y
 #$ -cwd
-#$ -o log/baoso3_c2.out
+#$ -o log/$JOB_NAME.log
 
-export PATH="/home/9yelin9/usr/bin:$PATH"
-export LD_LIBRARY_PATH="/usr/lib:/usr/lib64:/usr/slib:/home/9yelin9/usr/lib:/home/9yelin9/usr/lib64:$LD_LIBRARY_PATH"
-
-module load openmpi/gcc-4.8.5/4.1.0
-module load gsl/gcc-4.8.5/2.7.1
+source /home/9yelin9/.bash_profile
 
 t0=$(date +%s.%N)
 t0_string=$(date)
@@ -20,9 +16,9 @@ for ju in `seq 0.0 0.1 0.3`
 do
 	for n in `seq 0.2 0.2 11.8`
 	do
-		for u in `seq 0 1 9`
+		for u in `seq 0 0.5 5.0`
 		do
-			./hf3/hf3 baoso3 c2 $ju $SOC $n $u
+			./mod/hf3 baoso3 c2 $ju $SOC $n $u
 		done
 	done
 done
@@ -36,6 +32,9 @@ m=$(echo "($t%3600)/60"|bc)
 s=$(echo "($t%3600)%60"|bc)
 
 echo ""
-echo "# Job Start : $t0_string"
-echo "# Job End   : $t1_string"
-echo "# Elapsed time : ${h}h ${m}m ${s}s"
+echo "# Job ID       : $JOB_ID"
+echo "# Job Name     : $JOB_NAME"
+echo "# Time Start   : $t0_string"
+echo "# Time End     : $t1_string"
+echo "# Time Elapsed : ${h}h ${m}m ${s}s"
+echo ""

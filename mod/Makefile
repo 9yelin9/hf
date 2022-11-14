@@ -6,17 +6,22 @@ GSL_DIR = /opt/gsl/
 CFLAGS = -g -O2 -Wall -mcmodel=medium -I../include -I$(USR_DIR)/include/lapacke -I$(OMP_DIR)/include -I$(GSL_DIR)/include -fopenmp
 LDFLAGS = -mcmodel=medium -L../lib -L$(USR_DIR)/lib64 -L$(OMP_DIR)/lib -L$(GSL_DIR)/lib -fopenmp 
 LINKS = -lhf3 -lm -llapack -lgsl -lgslcblas
-OBJS = hf3.o
-TARGET = hf3
+OBJS = init.o hf3.o
+TARGETS = init hf3
 
-.PHONY: clean dep
+.PHONY: all clean dep
 .SUFFIXES : .c .o
-
-$(TARGET) : $(OBJS)
-	$(CC) $(LDLIBS) $(LDFLAGS) -o $@ $(OBJS) $(LINKS)
 
 .c .o :
 	$(CC) $(CFLAGS) -c $<
+
+all : $(TARGETS)
+
+init : init.o
+	$(CC) $(LDLIBS) $(LDFLAGS) -o $@ init.o $(LINKS)
+
+hf3 : hf3.o
+	$(CC) $(LDLIBS) $(LDFLAGS) -o $@ hf3.o $(LINKS)
 
 clean :
 	$(RM) *.o
