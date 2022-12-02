@@ -8,21 +8,20 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
-from .read import ReadFs, MakeGroundIdx
+from .read import ReadFn, MakeGroundIdx
 
 class Draw:
-	def __init__(self, input_path, output_path, info_path, info_cell, JU, SOC, tol):
-		self.input_path = input_path
+	def __init__(self, path_input, path_output, info_path, info_cell, JU, SOC):
+		self.path_input = path_input
 		self.path_point = [path_point for path_point, path_label in info_path]
 		self.path_label = [path_label for path_point, path_label in info_path]
 		self.info_cell = info_cell
 		self.JU = float(JU)
 		self.SOC = float(SOC)
-		self.tol = tol
 
 		self.obt = 3
 
-		self.dir = '%s/JU%.2f_SOC%.2f/' % (output_path, self.JU, self.SOC)
+		self.dir = '%s/JU%.2f_SOC%.2f/' % (path_output, self.JU, self.SOC)
 		self.colors=['tab:blue', 'tab:green', 'tab:red']
 		self.labels=[r'$d_{xy}$', r'$d_{yz}$', r'$d_{zx}$']
 		self.markers = ['s', 'o', '^']
@@ -35,9 +34,9 @@ class Draw:
 		Ni = self.info_cell[type[0]][0]
 		Nc = self.info_cell[type[0]][1]
 		Nb = Ni * Nc * 2
-		fs = [f for f in os.listdir(self.input_path) if re.search('band_%s.txt' % (type), f)][0]
+		fn = [f for f in os.listdir(self.path_input) if re.search('band_%s.txt' % (type), f)][0]
 
-		f = open(self.input_path + fs, 'r')
+		f = open(self.path_input + fn, 'r')
 		data = np.genfromtxt(f)
 		f.close()
 
@@ -62,11 +61,11 @@ class Draw:
 		N = float(N)
 		U = float(U)
 
-		fs = [self.dir + f for f in os.listdir(self.dir) if re.search('band_%s_N%.1f_U%.1f' % (type, N, U), f)][0]
-		fs_dict = ReadFs(fs)
-		fermi = fs_dict['fermi']
+		fn = [self.dir + f for f in os.listdir(self.dir) if re.search('band_%s_N%.1f_U%.1f' % (type, N, U), f)][0]
+		fn_dict = ReadFn(fn)
+		fermi = fn_dict['fermi']
 
-		f = open(fs, 'r')
+		f = open(fn, 'r')
 		data = np.genfromtxt(f)
 		data = data - fermi
 		f.close()
@@ -78,7 +77,7 @@ class Draw:
 		ax.axhline(y=0.0, ls=':', lw=2, color='dimgrey')
 
 		if is_unfold:
-			f = open(re.sub('band_', 'ufw_', fs), 'r')
+			f = open(re.sub('band_', 'ufw_', fn), 'r')
 			data_w = np.genfromtxt(f)
 			f.close()
 
@@ -98,7 +97,7 @@ class Draw:
 		ax.set_ylabel(r'$E - E_{F}$')
 		ax.set_ylim(e_min, e_max)
 
-		return e_min, e_max, fs, sc
+		return e_min, e_max, fn, sc
 	
 	def DrawDOS(self, type, N, U, ax, e_min=None, e_max=None):
 		Ni = self.info_cell[type[0]][0]
@@ -107,11 +106,11 @@ class Draw:
 		N = float(N)
 		U = float(U)
 
-		fs = [self.dir + f for f in os.listdir(self.dir) if re.search('dos_%s_N%.1f_U%.1f' % (type, N, U), f)][0]
-		fs_dict = ReadFs(fs, 'dos')
-		fermi = fs_dict['fermi']
+		fn = [self.dir + f for f in os.listdir(self.dir) if re.search('dos_%s_N%.1f_U%.1f' % (type, N, U), f)][0]
+		fn_dict = ReadFn(fn, 'dos')
+		fermi = fn_dict['fermi']
 
-		f = open(fs, 'r')
+		f = open(fn, 'r')
 		data = np.genfromtxt(f)
 		f.close()
 
@@ -146,39 +145,41 @@ class Draw:
 
 		fig, ax = plt.subplots(1, 2, gridspec_kw={'width_ratios': [3, 1]}, figsize=(11, 6))
 
-		e_min, e_max, fs, sc = self.DrawBand(type, N, U, ax[0], is_unfold=is_unfold)
+		e_min, e_max, fn, sc = self.DrawBand(type, N, U, ax[0], is_unfold=is_unfold)
 		self.DrawDOS(type, N, U, ax[1], e_min, e_max)
 
-		fname = re.sub('output', 'diagram', re.sub('txt', 'png', fs))
+		fname = re.sub('output', 'diagram', re.sub('txt', 'png', fn))
 
 		if sc:
 			cb = plt.colorbar(sc, shrink=0.6, pad=0.155, anchor=(0.00, 0.03), format='%.1f')
 			cb.ax.tick_params(labelsize=20)
-			fname = re.sub('output', 'diagram', re.sub('band', 'unfold', re.sub('txt', 'png', fs)))
+			fname = re.sub('output', 'diagram', re.sub('band', 'unfold', re.sub('txt', 'png', fn)))
 
 		ax[0].set_title(r'$%s$-type $N = %.1f$ $U = %.1f$ $J/U = %.1f$' % (type[0], N, U, self.JU), loc='left', fontdict={'fontsize':'medium'})
 		fig.tight_layout()
 		plt.subplots_adjust(wspace=0.03)
 		fig.savefig('%s' % fname)
 
-		print(fs)
+		print(fn)
 		plt.show()
 
-	def DrawPhase(self, type):
+	def DrawPhase(self, type, tol_gap=0.1, tol_mag=0.1):
 		Ni = self.info_cell[type[0]][0]
 		Nc = self.info_cell[type[0]][1]
 		Nb = Ni * Nc * 2
-		fs_list = [self.dir + fs for fs in os.listdir(self.dir) if re.match('band_%s' % type, fs)]
+		tol_mag = float(tol_mag)
+
+		fn_list = [self.dir + fn for fn in os.listdir(self.dir) if re.match('band_%s' % type, fn)]
 		N_list = []
 		U_list = []
 
-		idx_list = MakeGroundIdx(fs_list)
+		idx_list = MakeGroundIdx(fn_list)
 
 		for i in idx_list:
-			fs = fs_list[i]
-			fs_dict = ReadFs(fs)
-			N_list.append(fs_dict['N'])
-			U_list.append(fs_dict['U'])
+			fn = fn_list[i]
+			fn_dict = ReadFn(fn)
+			N_list.append(fn_dict['N'])
+			U_list.append(fn_dict['U'])
 
 		N = sorted(list(set(N_list)))
 		U = sorted(list(set(U_list)))
@@ -189,16 +190,19 @@ class Draw:
 		U_ins = []
 
 		for i in idx_list:
-			fs = fs_list[i]
-			fs_dict = ReadFs(fs)
-			m[U.index(fs_dict['U'])][N.index(fs_dict['N'])] = abs(fs_dict['m'])
+			fn = fn_list[i]
+			fn_dict = ReadFn(fn)
+			m[U.index(fn_dict['U'])][N.index(fn_dict['N'])] = abs(fn_dict['m'])
 
-			if fs_dict['gap'] > self.tol:
-				type_ins.append(fs_dict['type'])
-				N_ins.append(fs_dict['N'])
-				U_ins.append(fs_dict['U'])
+			if fn_dict['gap'] > tol_gap:
+				type_ins.append(fn_dict['type'])
+				N_ins.append(fn_dict['N'])
+				U_ins.append(fn_dict['U'])
 
 		fig, ax = plt.subplots(figsize=(10, 6))
+
+		ct = ax.contour(N, U, m, levels=[tol_mag], colors='w', linestyles='dotted')
+		if abs(tol_mag - 0.1) < 1e-6: ax.clabel(ct, ct.levels, inline=True, fmt='%.1f', fontsize=16)
 
 		cf = ax.contourf(N, U, m, levels=np.linspace(0, Nb/2, 101), cmap='Blues_r')
 		cb = plt.colorbar(cf, shrink=0.85, anchor=(0.00, 0.03), format='%.1f')
@@ -216,7 +220,7 @@ class Draw:
 			u_ins = np.array(U_ins)[idx]
 			ax.plot([n_ins, n_ins], [np.min(u_ins), np.max(u_ins)], lw=7, color='black', label=labels[i])
 			print(n_ins, list(zip(list(t_ins), list(u_ins))))
-		ax.plot([Nb], [max(U)], alpha=1) 
+		ax.plot([max(N)], [max(U)], alpha=1) 
 
 		ax.set_xticks(np.arange(0, Nb+1, Ni))
 		ax.set_xticklabels(range(0, Nb+1, Ni))
@@ -227,19 +231,19 @@ class Draw:
 		ax.legend(bbox_to_anchor=(1.03, 1.03), frameon=False, fontsize=17)
 		ax.set_title(r'$%s$-type $J/U = %.1f$' % (type[0], self.JU), loc='left', fontdict={'fontsize':'medium'})
 		fig.tight_layout()
-		fig.savefig('%s/phase_%s.png' % (re.sub('output', 'diagram', self.dir), type))
+		fig.savefig('%s/phase_%s_%.3f.png' % (re.sub('output', 'diagram', self.dir), type, tol_mag))
 		plt.show()
 
 	def DrawPhaseCheck(self, type1, type2):
-		fs1_list = [self.dir + fs for fs in os.listdir(self.dir) if re.match('band_%s' % type1, fs)]
-		fs2_list = [self.dir + fs for fs in os.listdir(self.dir) if re.match('band_%s' % type2, fs)]
+		fn1_list = [self.dir + fn for fn in os.listdir(self.dir) if re.match('band_%s' % type1, fn)]
+		fn2_list = [self.dir + fn for fn in os.listdir(self.dir) if re.match('band_%s' % type2, fn)]
 		N_list = []
 		U_list = []
 
-		for fs in fs1_list:
-			fs_dict = ReadFs(fs)
-			N_list.append(fs_dict['N'])
-			U_list.append(fs_dict['U'])
+		for fn in fn1_list:
+			fn_dict = ReadFn(fn)
+			N_list.append(fn_dict['N'])
+			U_list.append(fn_dict['U'])
 
 		N = sorted(list(set(N_list)))
 		U = sorted(list(set(U_list)))
@@ -248,13 +252,13 @@ class Draw:
 		e1 = np.zeros((len(U), len(N)))
 		e2 = np.zeros((len(U), len(N)))
 
-		for fs1, fs2 in zip(fs1_list, fs2_list):
-			fs1_dict = ReadFs(fs1)
-			fs2_dict = ReadFs(fs2)
-			m1[U.index(fs1_dict['U'])][N.index(fs1_dict['N'])] = fs1_dict['m']
-			m2[U.index(fs2_dict['U'])][N.index(fs2_dict['N'])] = fs2_dict['m']
-			e1[U.index(fs1_dict['U'])][N.index(fs1_dict['N'])] = fs1_dict['e']
-			e2[U.index(fs2_dict['U'])][N.index(fs2_dict['N'])] = fs2_dict['e']
+		for fn1, fn2 in zip(fn1_list, fn2_list):
+			fn1_dict = ReadFn(fn1)
+			fn2_dict = ReadFn(fn2)
+			m1[U.index(fn1_dict['U'])][N.index(fn1_dict['N'])] = fn1_dict['m']
+			m2[U.index(fn2_dict['U'])][N.index(fn2_dict['N'])] = fn2_dict['m']
+			e1[U.index(fn1_dict['U'])][N.index(fn1_dict['N'])] = fn1_dict['e']
+			e2[U.index(fn2_dict['U'])][N.index(fn2_dict['N'])] = fn2_dict['e']
 
 		s1 = []
 		s2 = []
@@ -282,9 +286,9 @@ class Draw:
 		N = float(N)
 		U = float(U)
 
-		fs = [self.dir + f for f in os.listdir(self.dir) if re.search('sol_%s_N%.1f_U%.1f' % (type, N, U), f)][0]
+		fn = [self.dir + f for f in os.listdir(self.dir) if re.search('sol_%s_N%.1f_U%.1f' % (type, N, U), f)][0]
 
-		f = open(fs, 'r')
+		f = open(fn, 'r')
 		data = np.genfromtxt(f)
 		f.close()
 
@@ -310,10 +314,10 @@ class Draw:
 		ax[1].set_ylim(m_min, m_max)
 		ax[1].legend()
 
-		fs_s = fs.split(sep='_')
-		fs_s = [s for s in fs_s if re.search('[a-zA-Z]+\d+[.]\d+', s)]
+		fn_s = fn.split(sep='_')
+		fn_s = [s for s in fn_s if re.search('[a-zA-Z]+\d+[.]\d+', s)]
 
 		ax[0].set_title(r'$%s$-type $N = %d$ $U = %.1f$ $J/U = %.1f$' % (type[0], N , U, self.JU), loc='left', fontdict={'fontsize':'medium'})
 		fig.tight_layout()
-		fig.savefig('%s' % (re.sub('output', 'diagram', re.sub('txt', 'png', fs))))
+		fig.savefig('%s' % (re.sub('output', 'diagram', re.sub('txt', 'png', fn))))
 		plt.show()

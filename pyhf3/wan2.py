@@ -30,7 +30,7 @@ class Wan2:
 		f_wan.close()
 		f_lat.close()
 
-	def Wan2Info(self, lat_type, dim=3):
+	def Wan2Info(self, ltype, dim=3):
 		f_wan  = open('%s/wannier90.win' % self.path_input, 'r')
 		f_info = open('%s/info.txt' % self.path_input, 'w')
 
@@ -49,7 +49,7 @@ class Wan2:
 		f_info.write('begin a\n')
 		for i in range(dim):
 			for j in range(dim):
-				f_info.write('%f ' % lat_dict[lat_type][i][j])
+				f_info.write('%f ' % lat_dict[ltype][i][j])
 			f_info.write('\n')
 		f_info.write('end a\n\n')
 
@@ -63,9 +63,7 @@ class Wan2:
 		f_wan.close()
 		f_info.close()
 
-	def Info2Path(self, max_points=1024, dim=3):
-		max_points -= 1
-
+	def Info2Path(self, pmax=1024, dim=3):
 		f_info = open('%s/info.txt' % self.path_input, 'r')
 		f_path = open('%s/path.txt' % self.path_input, 'w')
 
@@ -114,9 +112,10 @@ class Wan2:
 			dists.append(np.linalg.norm(ki - kf))
 			idxs.append(path[2*i+1][0])
 
-		dists = [int(max_points * d / sum(dists)) for d in dists]
-		if sum(dists) != max_points:	
-			dists[dists.index(max(dists))] += max_points - sum(dists)
+		pmax -= 1
+		dists = [int(pmax * d / sum(dists)) for d in dists]
+		if sum(dists) != pmax:	
+			dists[dists.index(max(dists))] += pmax - sum(dists)
 
 		dsum = 0
 		f_path.write('%s 0 ' % ('#' + path[0][0]))

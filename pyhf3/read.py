@@ -25,30 +25,30 @@ def ReadInfo(input_path):
 
 	return info_path, info_cell
 
-def ReadFs(fs, dtype='band'):
-	JU    = re.sub('JU',           '', re.search('JU\d+[.]\d+',               fs).group())	
-	SOC   = re.sub('_SOC',         '', re.search('_SOC\d+[.]\d+',             fs).group())	
-	type  = re.sub('%s_' % dtype,  '', re.search('%s_[a-z]+\d?' % dtype,      fs).group())	
-	N     = re.sub('_N',           '', re.search('_N\d+[.]\d+',               fs).group())	
-	U     = re.sub('_U',           '', re.search('_U\d+[.]\d+',               fs).group())	
-	n     = re.sub('_n',           '', re.search('_n\d+[.]\d+',               fs).group())	
-	m     = re.sub('_m',           '', re.search('_m[-]?\d+[.]\d+',           fs).group())	
-	e     = re.sub('_e',           '', re.search('_e[-]?\d+[.]\d+',           fs).group())	
-	fermi = re.sub('_fermi',       '', re.search('_fermi[-]?\d+[.]\d+',       fs).group())	
-	dntop = re.sub('_dntop',       '', re.search('_dntop[-]?\d+[.]\d+',       fs).group())	
-	gap   = re.sub('_gap',         '', re.search('_gap\d+[.]\d+',             fs).group())	
+def ReadFn(fn, dtype='band'):
+	JU    = re.sub('JU',           '', re.search('JU\d+[.]\d+',               fn).group())	
+	SOC   = re.sub('_SOC',         '', re.search('_SOC\d+[.]\d+',             fn).group())	
+	type  = re.sub('%s_' % dtype,  '', re.search('%s_[a-z]+\d?' % dtype,      fn).group())	
+	N     = re.sub('_N',           '', re.search('_N\d+[.]\d+',               fn).group())	
+	U     = re.sub('_U',           '', re.search('_U\d+[.]\d+',               fn).group())	
+	n     = re.sub('_n',           '', re.search('_n\d+[.]\d+',               fn).group())	
+	m     = re.sub('_m',           '', re.search('_m[-]?\d+[.]\d+',           fn).group())	
+	e     = re.sub('_e',           '', re.search('_e[-]?\d+[.]\d+',           fn).group())	
+	fermi = re.sub('_fermi',       '', re.search('_fermi[-]?\d+[.]\d+',       fn).group())	
+	dntop = re.sub('_dntop',       '', re.search('_dntop[-]?\d+[.]\d+',       fn).group())	
+	gap   = re.sub('_gap',         '', re.search('_gap\d+[.]\d+',             fn).group())	
 
 	info_dict = {'JU': float(JU), 'SOC': float(SOC), 'type': type, 'N': float(N), 'U': float(U),\
 			'n': float(n), 'm': float(m), 'e': float(e), 'fermi': float(fermi), 'dntop': float(dntop), 'gap': float(gap)}
 	
 	return info_dict
 
-def MakeGroundIdx(fs_list, exclude_f=False):
+def MakeGroundIdx(fn_list, dtype='band', exclude_f=False):
 	df = pd.DataFrame()
 
-	for fs in fs_list:
-		fs_dict = ReadFs(fs)
-		data = pd.DataFrame([[fs_dict['type'], fs_dict['N'], fs_dict['U'], fs_dict['n'], fs_dict['e']]], columns=['type', 'N', 'U', 'n', 'e'])
+	for fn in fn_list:
+		fn_dict = ReadFn(fn, dtype=dtype)
+		data = pd.DataFrame([[fn_dict['type'][0], fn_dict['N'], fn_dict['U'], fn_dict['n'], fn_dict['e']]], columns=['type', 'N', 'U', 'n', 'e'])
 		df = pd.concat([df, data], sort=False)
 
 	df = df.reset_index(drop=True)
@@ -56,8 +56,8 @@ def MakeGroundIdx(fs_list, exclude_f=False):
 	df = df[abs(df['N'] - df['n']) < 1e-2] # delete unreliable data
 
 	# drop higher energy
-	df = df.sort_values(by=['N', 'U', 'e', 'type'])
-	df = df.drop_duplicates(subset=['N', 'U'], keep='first')
+	df = df.sort_values(by=['N', 'U', 'e'])
+	df = df.drop_duplicates(subset=['N', 'U', 'type'], keep='first')
 	idx_list = df.index.to_list()
 	
 	return idx_list
