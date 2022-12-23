@@ -1,12 +1,11 @@
 #!/bin/bash
+. /home/9yelin9/.bash_profile
 
+#$ -q single.q
 #$ -pe mpi 1
-#$ -q openmp.q@phase07
 #$ -j y
 #$ -cwd
 #$ -o log/$JOB_NAME.log
-
-source /home/9yelin9/.bash_profile
 
 t0=$(date +%s.%N)
 t0_string=$(date)

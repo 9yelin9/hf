@@ -4,14 +4,12 @@
 #define HF3_H
 
 #define USE_MATH_DEFINES
-#define OMP_THREAD 16
 
 #define DIM 3 // dimension
 #define Nkg1 32 // num of Gauss-Legendre quadrature points (in 1D)
 #define Nkg 32768 // num of Gauss-Legendre quadrature points (in 3D) = (Nkg1)^3
 #define Nkb 1024 // num of band path points
 
-#define Nl_MAX 200000 // max len of lat.txt
 #define CVG_MAX 3 // max count of checking convergence
 
 #define CSQR(c) (pow(creal(c), 2) + pow(cimag(c), 2))
@@ -23,7 +21,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
-#include <lapacke.h>
+#include <lapack.h>
 #include <sys/stat.h>
 #include <gsl/gsl_integration.h>
 
@@ -97,10 +95,10 @@ void ReadCell(Cell *c); // read cell info in cell.txt
 void CalcQuadPoints(Cell c); // calculate points and weights for Gauss-Legendre quadrature
 void DotProd(Cell c, int Nk, Coord *k, Coord *r, lapack_complex_double *cf); // dot product
 void CalcCoef(Cell c, Coord *r); // calculate coefficients for basis transform
-void ReadLat(char *name, int *Nl, Lattice *l); // read lattice info in lat.txt
+void ReadLat(char *name, int Nl, Lattice *l, char *ltype); // read lattice info in lat.txt
 void Fourier0(Cell c, int ith, Coord k, int Nl, Lattice *l, lapack_complex_double *tb); // Fourier transform
 void FourierQ(Cell c, int ith, Coord k, int Nl, Lattice *l, lapack_complex_double *tb); // Fourier transform (Q basis)
-void CalcTB(Cell c, void (*Fourier)()); // calculate tight-binding Hamiltonian matrices
+void CalcTB(Cell c, char *ltype, void (*Fourier)()); // calculate tight-binding Hamiltonian matrices
 
 // mod/hf3.c
 void DataName(Cell c, Solution *s, char *dtype, char *dn); // data name
@@ -111,7 +109,7 @@ void InteractionS(Cell c, Solution *s, lapack_complex_double *tb0); // add inter
 void InteractionQ(Cell c, Solution *s, lapack_complex_double *tb0); // add interaction term (Q basis)
 void Basis0(Cell c, int Nk, lapack_complex_double *cf, lapack_complex_double *es); // basis transform
 void BasisQ(Cell c, int Nk, lapack_complex_double *cf, lapack_complex_double *es); // basis transform (Q basis)
-void Quadrature(Cell c, Solution *s, double *wg, double *ev, lapack_complex_double *es, double *n, double *m); // calculate occupation
+void Quadrature(Cell c, Solution *s, double *wg, double *ev, lapack_complex_double *es, double *oc); // calculate occupation
 void System0(double *n, double *m); // system
 void SystemScA(double *n, double *m); // system (simple cubic - a)
 void SystemScC(double *n, double *m); // system (simple cubic - c)

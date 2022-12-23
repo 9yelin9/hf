@@ -1,8 +1,8 @@
 #!/bin/bash
 . /home/9yelin9/.bash_profile
 
-#$ -q single.q
-#$ -pe mpi 1
+#$ -q mpi.q
+#$ -pe mpi 16
 #$ -j y
 #$ -cwd
 #$ -o log/$JOB_NAME.log
@@ -10,17 +10,10 @@
 t0=$(date +%s.%N)
 t0_string=$(date)
 
-SOC=0
-for ju in `seq 0.0 0.1 0.3`
-do
-	for n in `seq 0.2 0.2 11.8`
-	do
-		for u in `seq 0 0.2 3`
-		do
-			./mod/hf3 cual2o4 a6 $ju $SOC $n $u
-		done
-	done
-done
+./mod/init baoso3 f 1
+./mod/init baoso3 a 1
+./mod/init baoso3 c 1
+./mod/init baoso3 g 1
 
 t1=$(date +%s.%N)
 t1_string=$(date)

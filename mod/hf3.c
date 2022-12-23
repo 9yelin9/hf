@@ -12,22 +12,23 @@ void Init12(double *m) {m[0] = 0.1; m[1] = 1.0; m[2] = 1.0;}
 
 int main(int argc, char *argv[]) {
 	if(argc < 2) {
-		printf("%s <name> <type> <J/U> <SOC> <N> <U> : make Hartree-Fock approximated 3-band Hubbard model\n", argv[0]);
+		printf("%s <name> <J/U> <SOC> <type> <N> <U> : make Hartree-Fock approximated 3-band Hubbard model\n", argv[0]);
 		exit(1);
 	}
+	omp_set_num_threads(1);
 
 	time_t t = time(NULL);
 	struct tm *tm = localtime(&t);
 
 	Cell c = {
 		.name = argv[1],
-		.type = argv[2]
+		.type = argv[4]
 	};
 	ReadCell(&c);
 
 	Solution s = {
-		.JU = atof(argv[3]),
-		.SOC = atof(argv[4]),
+		.JU = atof(argv[2]),
+		.SOC = atof(argv[3]),
 		.N = atof(argv[5]),
 		.U = atof(argv[6]),
 		.J = s.JU * s.U,

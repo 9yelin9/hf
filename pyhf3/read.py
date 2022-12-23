@@ -26,6 +26,8 @@ def ReadInfo(input_path):
 	return info_path, info_cell
 
 def ReadFn(fn, dtype='band'):
+	dtype = dtype + '\d?[.]?\d?\d?'
+
 	JU    = re.sub('JU',           '', re.search('JU\d+[.]\d+',               fn).group())	
 	SOC   = re.sub('_SOC',         '', re.search('_SOC\d+[.]\d+',             fn).group())	
 	type  = re.sub('%s_' % dtype,  '', re.search('%s_[a-z]+\d?' % dtype,      fn).group())	
@@ -36,7 +38,7 @@ def ReadFn(fn, dtype='band'):
 	e     = re.sub('_e',           '', re.search('_e[-]?\d+[.]\d+',           fn).group())	
 	fermi = re.sub('_fermi',       '', re.search('_fermi[-]?\d+[.]\d+',       fn).group())	
 	dntop = re.sub('_dntop',       '', re.search('_dntop[-]?\d+[.]\d+',       fn).group())	
-	gap   = re.sub('_gap',         '', re.search('_gap\d+[.]\d+',             fn).group())	
+	gap   = re.sub('_gap',         '', re.search('_gap[-]?\d+[.]\d+',             fn).group())	
 
 	info_dict = {'JU': float(JU), 'SOC': float(SOC), 'type': type, 'N': float(N), 'U': float(U),\
 			'n': float(n), 'm': float(m), 'e': float(e), 'fermi': float(fermi), 'dntop': float(dntop), 'gap': float(gap)}

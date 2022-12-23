@@ -1,12 +1,11 @@
 #!/bin/bash
+. /home/9yelin9/.bash_profile
 
+#$ -q single.q
 #$ -pe mpi 1
-#$ -q openmp.q@phase06
 #$ -j y
 #$ -cwd
 #$ -o log/$JOB_NAME.log
-
-source /home/9yelin9/.bash_profile
 
 t0=$(date +%s.%N)
 t0_string=$(date)
@@ -18,7 +17,7 @@ do
 	do
 		for u in `seq 0 0.5 5.0`
 		do
-			./mod/hf3 baoso3 c $ju $SOC $n $u
+			./mod/hf3 baoso3 $ju $SOC c $n $u
 		done
 	done
 done

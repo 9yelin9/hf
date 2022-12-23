@@ -117,8 +117,6 @@ class Draw:
 		if e_min == None: e_min = np.min(data[:, 0]) - fermi
 		if e_max == None: e_max = np.max(data[:, 0]) - fermi
 
-		data[:, 1:] = data[:, 1:] / np.pi
-		data[:, 1:] = data[:, 1:] / (2*np.pi)**3
 		dos_max = np.max(data[:, 1:])
 
 		ax.axhline(y=0.0, ls=':', lw=2, color='dimgrey')
@@ -151,11 +149,11 @@ class Draw:
 		fname = re.sub('output', 'diagram', re.sub('txt', 'png', fn))
 
 		if sc:
-			cb = plt.colorbar(sc, shrink=0.6, pad=0.155, anchor=(0.00, 0.03), format='%.1f')
+			cb = plt.colorbar(sc, ax=ax[1], shrink=0.6, pad=0.155, anchor=(0.00, 0.03), format='%.1f')
 			cb.ax.tick_params(labelsize=20)
 			fname = re.sub('output', 'diagram', re.sub('band', 'unfold', re.sub('txt', 'png', fn)))
 
-		ax[0].set_title(r'$%s$-type $N = %.1f$ $U = %.1f$ $J/U = %.1f$' % (type[0], N, U, self.JU), loc='left', fontdict={'fontsize':'medium'})
+		ax[0].set_title(r'$%s$-type $N = %.1f$ $U = %.1f$ $J/U = %.1f$' % (type[0], N/2, U, self.JU), loc='left', fontdict={'fontsize':'medium'})
 		fig.tight_layout()
 		plt.subplots_adjust(wspace=0.03)
 		fig.savefig('%s' % fname)
@@ -167,6 +165,7 @@ class Draw:
 		Ni = self.info_cell[type[0]][0]
 		Nc = self.info_cell[type[0]][1]
 		Nb = Ni * Nc * 2
+		tol_gap = float(tol_gap)
 		tol_mag = float(tol_mag)
 
 		fn_list = [self.dir + fn for fn in os.listdir(self.dir) if re.match('band_%s' % type, fn)]
@@ -207,7 +206,7 @@ class Draw:
 		cf = ax.contourf(N, U, m, levels=np.linspace(0, Nb/2, 101), cmap='Blues_r')
 		cb = plt.colorbar(cf, shrink=0.85, anchor=(0.00, 0.03), format='%.1f')
 		cb.set_ticks(np.arange(0, Nb/2+0.1, 1))
-		cb.set_ticklabels(np.arange(0, Nb/2+0.1, 1))
+		cb.set_ticklabels(np.arange(0, 3.1, 0.5))
 		cb.set_label(r'$m$', rotation=0, labelpad=20)
 		cb.ax.tick_params(labelsize=18)
 
@@ -223,7 +222,7 @@ class Draw:
 		ax.plot([max(N)], [max(U)], alpha=1) 
 
 		ax.set_xticks(np.arange(0, Nb+1, Ni))
-		ax.set_xticklabels(range(0, Nb+1, Ni))
+		ax.set_xticklabels(np.arange(0, 7, 1))
 		ax.set_yticks(np.arange(0, max(U)+1, 1))
 		ax.set_ylim(min(U), max(U))
 		ax.set_xlabel(r'$N$')

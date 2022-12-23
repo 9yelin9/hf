@@ -74,7 +74,7 @@ void ReadCell(Cell *c) {
 		fgets(buf, sizeof(buf), f);
 		sscanf(buf, "%s%s%s%d%d%lf%lf%lf",\
 				type, c->sys, c->bas, &c->Ni, &c->Nc, &c->q.c[0], &c->q.c[1], &c->q.c[2]);
-		if(strstr(type, c->type)) break;
+		if(strstr(c->type, type)) break;
 	}
 	fclose(f);
 
@@ -84,20 +84,18 @@ void ReadCell(Cell *c) {
 	for(i=0; i<3; i++) c->q.c[i] *= M_PI;
 }
 
-void ReadLat(char *name, int *Nl, Lattice *l) {
+void ReadLat(char *name, int Nl, Lattice *l, char *ltype) {
 	FILE *f;
 	char fn[64];
 
-	sprintf(fn, "input/%s/lat.txt", name);
+	sprintf(fn, "input/%s/%slat.txt", name, ltype);
 	f = OpenFile(fn, "r");
 
 	int i;
 	char buf[1024];
 
 	fgets(buf, sizeof(buf), f);
-	sscanf(buf, "%d", Nl);
-
-	for(i=0; i<*Nl; i++) {
+	for(i=0; i<Nl; i++) {
 		fscanf(f, "%lf%lf%lf%d%d%lf%lf",\
 				&l[i].d.c[0], &l[i].d.c[1], &l[i].d.c[2], &l[i].obi, &l[i].obf, &l[i].tre, &l[i].tim);
 	}
@@ -220,12 +218,14 @@ void CalcCoef(Cell c, Coord *r) {
 	printf("%s(%s, %s) : %lds\n", __func__, fgn, fbn, t1 - t0);
 }
 
-void CalcTB(Cell c, void (*Fourier)()) {
-	FILE *fg, *fb;
-	char fgn[64], fbn[64];
+void CalcTB(Cell c, char *ltype, void (*Fourier)()) {
+	FILE *fl, *fg, *fb;
+	char fln[64], fgn[64], fbn[64];
 
+	sprintf(fln, "input/%s/%slat.txt", c.name, ltype);
 	sprintf(fgn, "input/%s/tbg_%c.bin", c.name, c.type[0]);
 	sprintf(fbn, "input/%s/tbb_%c.bin", c.name, c.type[0]);
+	fl = OpenFile(fln, "r");
 	fg = OpenFile(fgn, "wb");
 	fb = OpenFile(fbn, "wb");
 
@@ -243,10 +243,16 @@ void CalcTB(Cell c, void (*Fourier)()) {
 	ReadBin(kbn, sizeof(Coord) * Nkb, kb);
 
 	int Nl;
-	Lattice l[Nl_MAX];
-	ReadLat(c.name, &Nl, l);
+	char buf[16];
+	Lattice *l;
 
-	omp_set_num_threads(OMP_THREAD);
+	fgets(buf, sizeof(buf), fl);
+	sscanf(buf, "%d", &Nl);
+	fclose(fl);
+
+	l = (Lattice*)malloc(sizeof(Lattice) * Nl);
+	ReadLat(c.name, Nl, l, ltype);
+	
 #pragma omp parallel for ordered
 	for(i=0; i<Nkg; i++) Fourier(c, i, kg[i], Nl, l, tbg);
 #pragma omp parallel for ordered              
@@ -307,7 +313,7 @@ void DataName(Cell c, Solution *s, char *dtype, char *dn) {
 				c.name, s->JU, s->SOC, dtype, c.type, s->N, s->U, s->runtime);
 	}
 	else {
-		sprintf(dn, "output/%s/JU%.2f_SOC%.2f/%s_%s_N%.1f_U%.1f_n%f_m%f_e%f_gap%f_fermi%f_dntop%f_%s.txt",\
+		sprintf(dn, "output/%s/JU%.2f_SOC%.2f/%s_%s_N%.1f_U%.1f_n%.16f_m%.16f_e%.16f_gap%.16f_fermi%.16f_dntop%.16f_%s.txt",\
 				c.name, s->JU, s->SOC, dtype, c.type, s->N, s->U, s->ns, s->ms, s->e, s->gap, s->fermi, s->dntop, s->runtime);
 	}
 }
@@ -467,15 +473,9 @@ void BasisQ(Cell c, int Nk, lapack_complex_double *cf, lapack_complex_double *es
 	}
 }
 
-#define OC_IDX (c.Nc*i + j)
-
-void Quadrature(Cell c, Solution *s, double *wg, double *ev, lapack_complex_double *es, double *n, double *m) {
+void Quadrature(Cell c, Solution *s, double *wg, double *ev, lapack_complex_double *es, double *oc) {
 	int i, j;
-	double oc[c.Nb], mt[c.Nc], ms[c.Nc];
 
-	memset(n,  0, sizeof(double) * c.Nc);
-	memset(mt, 0, sizeof(double) * c.Nc);
-	memset(ms, 0, sizeof(double) * c.Nc);
 	memset(oc, 0, sizeof(double) * c.Nb);
 
 	for(i=0; i<c.Nb*Nkg; i++) {
@@ -487,18 +487,9 @@ void Quadrature(Cell c, Solution *s, double *wg, double *ev, lapack_complex_doub
 	}
 
 	for(i=0; i<c.Nb; i++) oc[i] /= pow(2*M_PI, 3);
-
-	for(i=0; i<c.Ni; i++) {
-		for(j=0; j<c.Nc; j++) {
-			n[j]  +=  oc[OC_IDX] + oc[OC_IDX + c.Ns];
-			mt[j] +=  oc[OC_IDX] - oc[OC_IDX + c.Ns];
-			ms[j] += (oc[OC_IDX] - oc[OC_IDX + c.Ns]) * pow(-1, i);
-		}
-	}
-
-	if(strstr(c.type, "f")) for(i=0; i<c.Nc; i++) m[i] = mt[i];
-	else                    for(i=0; i<c.Nc; i++) m[i] = ms[i];
 }
+
+#define OC_IDX (c.Nc*i + j)
 
 void System0(double *n, double *m) {}
 void SystemScA(double *n, double *m) {n[2] = n[0];        m[2] = m[0];}
@@ -514,11 +505,14 @@ void CalcSolution(Cell c, Solution *s, LAPACK *lp, void (*System)(), void (*Inte
 
 	time_t t0 = time(NULL);
 
-	int itr, i, j, is_cvg;
+	int itr, i, j, one, is_cvg;
 	char wgn[64], cfgn[64], tbgn[64];
-	double wg[Nkg], ev[c.Nb * Nkg], fermi0, fermi1, n[c.Nc], m[c.Nc], ns = 0, ms = 0, cvg[c.Nc][CVG_MAX], avg;
+	double wg[Nkg], ev[c.Nb * Nkg], fermi0, fermi1, oc[c.Nb], n[c.Nc], m[c.Nc], ns = 0, ms = 0, cvg[c.Nc][CVG_MAX], avg;
 	Energy energy;
 	lapack_complex_double cfg[c.Ni * Nkg], tbg[c.Nbb * Nkg], es[c.Nbb * Nkg];
+
+	if(strstr(c.type, "f")) one = 1;
+	else one = -1;
 
 	sprintf(wgn,  "input/%s/wg.bin", c.name);
 	sprintf(cfgn, "input/%s/cfg.bin", c.name);
@@ -533,13 +527,9 @@ void CalcSolution(Cell c, Solution *s, LAPACK *lp, void (*System)(), void (*Inte
 		}
 	}
 
-	fprintf(f, "%5s%12s", "#itr", "fermi");
-	for(i=0; i<c.Nc; i++) fprintf(f, "%10s%02d%10s%02d", "n", i+1, "m", i+1);
-	fprintf(f, "%12s%12s\n", "ns", "ms");
-
-	fprintf(f, "%5d%12f", 0, s->fermi);
-	for(i=0; i<c.Nc; i++) fprintf(f, "%12f%12f", s->n[i], s->m[i]);
-	fprintf(f, "%12f%12f\n", s->ns, s->ms);
+	fprintf(f, "%22s", "#fermi");
+	for(i=0; i<c.Nb; i++) fprintf(f, "%20s%02d", "oc", i+1);
+	fprintf(f, "\n");
 
 	for(itr=0; itr<25; itr++) {
 		CalcEigen(c, s, lp, Nkg, tbg, ev, es, &energy, Interaction);
@@ -550,10 +540,18 @@ void CalcSolution(Cell c, Solution *s, LAPACK *lp, void (*System)(), void (*Inte
 		s->fermi = 0.5 * (fermi0 + fermi1);
 
 		while(fabs(s->fermi - fermi1) > 1e-8) {
+			memset(n, 0, sizeof(double) * c.Nc);
+			memset(m, 0, sizeof(double) * c.Nc);
 			ns = 0;
 			ms = 0;
 
-			Quadrature(c, s, wg, ev, es, n, m);
+			Quadrature(c, s, wg, ev, es, oc);
+			for(i=0; i<c.Ni; i++) {
+				for(j=0; j<c.Nc; j++) {
+					n[j] +=  oc[OC_IDX] + oc[OC_IDX + c.Ns];
+					m[j] += (oc[OC_IDX] - oc[OC_IDX + c.Ns]) * pow(one, i);
+				}
+			}
 			System(n, m);
 
 			for(i=0; i<c.Nc; i++) {
@@ -576,9 +574,9 @@ void CalcSolution(Cell c, Solution *s, LAPACK *lp, void (*System)(), void (*Inte
 		s->ns = ns;
 		s->ms = ms;
 
-		fprintf(f, "%5d%12f", itr+1, s->fermi);
-		for(i=0; i<c.Nc; i++) fprintf(f, "%12f%12f", s->n[i], s->m[i]);
-		fprintf(f, "%12f%12f\n", s->ns, s->ms);
+		fprintf(f, "%22.16f", s->fermi);
+		for(i=0; i<c.Nb; i++) fprintf(f, "%22.16f", oc[i]);
+		fprintf(f, "\n");
 			
 		is_cvg = 0;
 		for(i=0; i<c.Nc; i++) {
@@ -620,12 +618,12 @@ void MakeBand(Cell c, Solution *s, LAPACK *lp, void (*Interaction)(), void (*Bas
 
 	CalcEigen(c, s, lp, Nkb, tbb, ev, es, &energy, Interaction);
 
-	fprintf(f, "%10s%02d", "#e", 0);
-	for(i=1; i<c.Nb; i++) fprintf(f, "%10s%02d", "e", i+1);
+	fprintf(f, "%20s%02d", "#e", 0);
+	for(i=0; i<c.Nb; i++) fprintf(f, "%20s%02d", "e", i+1);
 	fprintf(f, "\n");
 
 	for(i=0; i<Nkb; i++) {
-		for(j=0; j<c.Nb; j++) fprintf(f, "%12f", ev[c.Nb*i + j]);
+		for(j=0; j<c.Nb; j++) fprintf(f, "%22.16f", ev[c.Nb*i + j]);
 		fprintf(f, "\n");
 	}
 
@@ -655,8 +653,8 @@ void MakeUFW(Cell c, Solution *s, double *ev, lapack_complex_double *es, void (*
 	ReadBin(cfbn, sizeof(lapack_complex_double) * c.Ni * Nkb, cfb);
 	Basis(c, Nkb, cfb, es);
 
-	fprintf(f, "%10s%02d", "#w", 0);
-	for(i=1; i<c.Nb; i++) fprintf(f, "%10s%02d", "w", i+1);
+	fprintf(f, "%20s%02d", "#w", 0);
+	for(i=0; i<c.Nb; i++) fprintf(f, "%20s%02d", "w", i+1);
 	fprintf(f, "\n");
 
 	for(i=0; i<Nkb; i++) {
@@ -666,7 +664,7 @@ void MakeUFW(Cell c, Solution *s, double *ev, lapack_complex_double *es, void (*
 				p = es[STATE_IDX] * cfb[c.Ni*i + 0] + es[STATE_IDX + c.Nc] * cfb[c.Ni*i + 1];
 				p2 += CSQR(p) / c.Ni;
 			}
-			fprintf(f, "%12f", p2); 
+			fprintf(f, "%22.16f", p2); 
 		}
 		fprintf(f, "\n");
 	}
@@ -677,8 +675,8 @@ void MakeUFW(Cell c, Solution *s, double *ev, lapack_complex_double *es, void (*
 	printf("%s(%s) : %lds\n", __func__, fn, t1 - t0);
 }
 
-#define WIDTH 0.05
-#define GREEN(i) (WIDTH / (pow(e - ev[i], 2) + pow(WIDTH, 2))) 
+#define ETA 0.1
+#define GREEN(i) (ETA / (pow(e - ev[i], 2) + pow(ETA, 2))) 
 
 void MakeDOS(Cell c, Solution *s, LAPACK *lp, void (*Interaction)(), void (*Basis)()) {
 	FILE *f;
@@ -689,9 +687,9 @@ void MakeDOS(Cell c, Solution *s, LAPACK *lp, void (*Interaction)(), void (*Basi
 
 	time_t t0 = time(NULL);
 
-	int itv, i, j;
+	int itv = 128, v, i, j;
 	char cfgn[64], tbgn[64];
-	double ev[c.Nb * Nkg], e, dos[c.Nb];
+	double ev[c.Nb * Nkg], e, dos[c.Nb], vol = pow(2*M_PI, 3) * pow(2*M_PI, 3) * M_PI; 
 	Energy energy;
 	lapack_complex_double cfg[c.Ni * Nkg], tbg[c.Nbb * Nkg], es[c.Nbb * Nkg];
 	
@@ -703,23 +701,23 @@ void MakeDOS(Cell c, Solution *s, LAPACK *lp, void (*Interaction)(), void (*Basi
 	CalcEigen(c, s, lp, Nkg, tbg, ev, es, &energy, Interaction);
 	Basis(c, Nkg, cfg, es);
 
-	energy.min -= 1.0;
-	energy.max += 1.0;
+	energy.min -= 2.0;
+	energy.max += 2.0;
 	
-	fprintf(f, "%12s", "#e");
-	for(i=0; i<c.Nb; i++) fprintf(f, "%10s%02d", "d", i+1);
+	fprintf(f, "%22s", "#e");
+	for(i=0; i<c.Nb; i++) fprintf(f, "%20s%02d", "d", i+1);
 	fprintf(f, "\n");
 
-	for(itv=0; itv<128; itv++) {
+	for(v=0; v<itv; v++) {
 		memset(dos, 0, sizeof(dos));
-		e = energy.min + (energy.max - energy.min) * itv / 128;
+		e = energy.min + (energy.max - energy.min) * v / itv;
 
 		for(i=0; i<c.Nb*Nkg; i++) {
-			for(j=0; j<c.Nb; j++) dos[j] += CSQR(es[c.Nb*i + j]) * GREEN(i);
+			for(j=0; j<c.Nb; j++) dos[j] += GREEN(i) * CSQR(es[c.Nb*i + j]);
 		}
 
-		fprintf(f, "%12f", e);
-		for(i=0; i<c.Nb; i++) fprintf(f, "%12f", dos[i] / pow(2*M_PI, 3));
+		fprintf(f, "%22.16f", e);
+		for(i=0; i<c.Nb; i++) fprintf(f, "%22.16f", dos[i] / vol);
 		fprintf(f, "\n");
 	}
 

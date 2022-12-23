@@ -10,17 +10,10 @@
 t0=$(date +%s.%N)
 t0_string=$(date)
 
-SOC=0
-for ju in `seq 0.0 0.1 0.3`
-do
-	for n in `seq 0.2 0.2 11.8`
-	do
-		for u in `seq 0 0.2 3`
-		do
-			./mod/hf3 cual2o4 a6 $ju $SOC $n $u
-		done
-	done
-done
+py hf3.py -n baoso3 -ms d 1m-1-2 100 0.5 1.0
+py hf3.py -n baoso3 -ms d 1f-1-2 100 0.5 1.0
+py hf3.py -n baoso3 -ms d 1b-1-2 100 0.5 1.0
+py hf3.py -n baoso3 -ms d 1fb-1-2 100 0.5 1.0
 
 t1=$(date +%s.%N)
 t1_string=$(date)

@@ -1,20 +1,20 @@
 #!/bin/bash
+. /home/9yelin9/.bash_profile
 
+#$ -q single.q
 #$ -pe mpi 1
-#$ -q openmp.q@phase06
 #$ -j y
 #$ -cwd
 #$ -o log/$JOB_NAME.log
 
-source /home/9yelin9/.bash_profile
-
 t0=$(date +%s.%N)
 t0_string=$(date)
 
-./mod/init baoso3 f
-./mod/init baoso3 a
-./mod/init baoso3 c
-./mod/init baoso3 g
+py hf3.py -n baoso3 -ms b 0 0
+py hf3.py -n baoso3 -ms b 1 2
+py hf3.py -n baoso3 -ms b 1 20
+py hf3.py -n baoso3 -ms b 2 2
+py hf3.py -n baoso3 -ms b 2 20
 
 t1=$(date +%s.%N)
 t1_string=$(date)

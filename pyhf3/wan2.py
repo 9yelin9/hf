@@ -2,6 +2,7 @@
 
 import re
 import numpy as np
+import pandas as pd
 
 class Wan2:
 	def __init__(self, path_input):
@@ -9,8 +10,8 @@ class Wan2:
 		dim = 3
 
 	def Wan2Lat(self):
-		f_wan = open('%s/wannier90_hr.dat' % (self.path_input), 'r')
-		f_lat = open('%s/lat.txt' % (self.path_input), 'w')
+		f_wan = open('%s/wannier90_hr.dat' % self.path_input, 'r')
+		f_lat = open('%s/lat.txt' % self.path_input, 'w')
 
 		pat_site = '[-]?\d+\s+'
 		pat_obt = '[-]?\d+\s+'
@@ -21,7 +22,7 @@ class Wan2:
 
 		for line in f_wan:
 			if re.search(pat, line): len += 1
-		f_lat.write("%d\n" % (len))
+		f_lat.write('%d\n' % len)
 
 		f_wan.seek(0, 0)
 		for line in f_wan:
@@ -127,11 +128,11 @@ class Wan2:
 		for pi, pf, d in zip(pis, pfs, dists):
 			for i in range(d):
 				for j in range(dim):
-					f_path.write('%.12f ' % (pi[j] + (pf[j] - pi[j]) * i / d))
+					f_path.write('%.16f ' % (pi[j] + (pf[j] - pi[j]) * i / d))
 				f_path.write('\n')
 
 		for j in range(dim):
-			f_path.write('%.12f ' % (pi[j] + (pf[j] - pi[j])))
+			f_path.write('%.16f ' % (pi[j] + (pf[j] - pi[j])))
 		f_path.write('\n')
 
 		f_info.close()
@@ -147,3 +148,38 @@ class Wan2:
 
 		f_path.close()
 		f_path_bin.close()
+
+	def Lat2SLat(self):
+		df0 = pd.read_csv('%s/lat.txt' % self.path_input, sep='\s+', skiprows=1, names=['c0', 'c1', 'c2', 'obi', 'obf', 'tre', 'tim'])
+		f = open('%s/slat.txt' % self.path_input, 'w')
+
+		slat_dict = {
+			'000': 0,
+			'100': 3,
+			'010': 6,
+			'110': 9,
+			'001': 12,
+			'101': 15,
+			'011': 18,
+			'111': 21,
+		}
+
+		f.write('%d\n' % (len(df0) * len(slat_dict)))
+
+		for key, val in slat_dict.items():
+			df = df0.copy()
+			for i in range(3):
+				df['c%d' % i] += int(key[i])
+			df['obi'] += val
+
+			for idx in df.index:
+				k = ''
+				for i in range(3):
+					k += str(df.loc[idx, 'c%d' % i] % 2)
+					df.loc[idx, 'c%d' % i] //= 2
+				df.loc[idx, 'obf'] += slat_dict[k]
+
+				for col in df.columns[:-2]: f.write('%5d' % df.loc[idx, col])
+				for col in df.columns[-2:]: f.write('%12.6f' % df.loc[idx, col])
+				f.write('\n')
+

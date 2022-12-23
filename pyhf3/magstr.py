@@ -2,6 +2,7 @@
 
 import re
 import os
+import time
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
@@ -9,7 +10,7 @@ from sklearn.metrics import accuracy_score
 from .read import ReadFn, MakeGroundIdx
 
 class MagStr:
-	def __init__(self, path_output, info_path, info_cell, ptype, pnum=0):
+	def __init__(self, path_output, info_path, info_cell):
 		self.path_output = path_output
 
 		info_path_nodup = [] # drop duplicated hsp
@@ -19,19 +20,17 @@ class MagStr:
 
 		self.info_path = info_path_nodup
 		self.info_cell = info_cell
-		self.ptype = ptype
-		self.pnum = int(pnum)
 
 		self.Ni = self.info_cell['a'][0]
 		self.Nc = self.info_cell['a'][1]
 		self.Nb = self.Ni * self.Nc * 2
 
-		self.tol_U = 1e-1
-		self.params = ['JU', 'SOC', 'type', 'N', 'U', 'm', 'fermi', 'dntop', 'gap']
+		self.tol_U = 0.1
+		self.params = ['JU', 'type', 'N', 'U', 'm', 'fermi', 'dntop', 'gap']
 
 		os.makedirs('%s/magstr/' % path_output, exist_ok=True)
 
-	def Points0(self): # high symmetry points
+	def Points0(self, pnum): # high symmetry points
 		points = []
 		labels = []
 
@@ -41,13 +40,13 @@ class MagStr:
 
 		return points, labels
 
-	def Points1(self): # hsp + around hsp
+	def Points1(self, pnum): # hsp + around hsp
 		points = []
 		labels = []
-		hnum = -(self.pnum // 2)
+		hnum = -(pnum // 2)
 
 		for point, label in self.info_path:	
-			for i in range(self.pnum + 1):
+			for i in range(pnum + 1):
 				points.append(point + hnum + i)
 				labels.append(label + str(hnum + i))
 
@@ -59,17 +58,17 @@ class MagStr:
 
 		return points, labels
 
-	def Points2(self): # hsp + between hsp
+	def Points2(self, pnum): # hsp + between hsp
 		labels = []
-		hnum = -(self.pnum // 2)
+		hnum = -(pnum // 2)
 
 		ps = []
 		for p, label in self.info_path:
 			ps.append(p)
-			for i in range(self.pnum + 1):
+			for i in range(pnum + 1):
 				labels.append(label + str(hnum + i))
 
-		itvs = [np.linspace(ps[i], ps[i+1], self.pnum+2, dtype=int) for i in range(len(ps)-1)]
+		itvs = [np.linspace(ps[i], ps[i+1], pnum+2, dtype=int) for i in range(len(ps)-1)]
 
 		points = [itv[:-1] for itv in itvs]
 		points = list(np.ravel(points))
@@ -81,14 +80,17 @@ class MagStr:
 
 		return points, labels
 
-	def MakeBand(self):
+	def MakeBand(self, ptype, pnum):
+		t0 = time.time()
+
 		p_dict = {
 			'0': self.Points0,
 			'1': self.Points1,
 			'2': self.Points2,
 		}
 
-		points, labels = p_dict[self.ptype]()
+		bn = '%s/magstr/band_pt%s_pn%s.csv' % (self.path_output, ptype, pnum)
+		points, labels = p_dict[ptype](int(pnum))
 
 		e_label = []
 		w_label = []
@@ -127,60 +129,49 @@ class MagStr:
 				df = pd.concat([df, data], sort=False)
 
 		df = df.reset_index(drop=True)
-		df.to_csv('%s/magstr/band_ptype%s_pnum%d.csv' % (self.path_output, self.ptype, self.pnum), sep=',')
+		df.to_csv(bn, sep=',')
 
-	def OpenBand(self, tol, under_tol):
-		tol = float(tol)
+		t1 = time.time()
+		print('MakeBand(%s) : %fs' % (bn, t1-t0))
 
-		df = pd.read_csv('%s/magstr/band_ptype%s_pnum%d.csv' % (self.path_output, self.ptype, self.pnum), index_col=0)
+	def OpenBand(self, dts, bins):
+		bins = int(bins)
 
+		df = pd.read_csv('%s/magstr/band_pt%s_pn%s.csv' % (self.path_output, dts[1], dts[2]), index_col=0)
 		df = df[df['U'] > self.tol_U]
-		if under_tol != '0': df = df[df['m'] < tol]
-		else: df = df[df['m'] > tol]
-		df = df.reset_index(drop=True)
 
-		e_label = [col for col in df.columns if re.match('e', col)]
-		w_label = [col for col in df.columns if re.match('w', col)]
+		e_label = [v for v in df.columns if re.match('e', v)]
+		w_label = [re.sub('e', 'w', v) for v in e_label]
 
 		for e in e_label: df[e] = df[e] - df['dntop']
+		df = df.reset_index(drop=True)
 
-		return df, e_label, w_label
-
-	def CalcEnergyMinMax(self, df, e_label):
 		e_list = df.loc[:, e_label].values.flatten()
 		e_min = min(e_list)
 		e_max = max(e_list)
+		e_range = np.linspace(e_min, e_max, bins)
 
-		return e_min, e_max
-
-	def MakeDOS(self, dtype, tol, bins, eta, under_tol='0', broadening='0'):
-		tol = float(tol)
-		bins = int(bins)
-		eta = float(eta)
-
-		d_dict = {
-			'0': self.MakeDOS0,
-			'1': self.MakeDOS1,
-			'2': self.MakeDOS2,
+		band = {
+			'df': df,
+			'e_label': e_label,
+			'w_label': w_label,
+			'e_range': e_range,
 		}
 
-		fn_dos = '%s/magstr/dos_ptype%s_pnum%d_dtype%s_tol%.3f_bins%d_eta%.3f.csv' % (self.path_output, self.ptype, self.pnum, dtype, tol, bins, eta)
-		if under_tol  != '0': fn_dos = re.sub('dos', 'dos_und', fn_dos)
-		if broadening != '0': fn_dos = re.sub('dos', 'dos_bro', fn_dos)
-
-		d_dict[dtype](tol, bins, eta, under_tol, broadening, fn_dos)
-
-	def MakeDOS0(self, tol, bins, eta, under_tol, broadening, fn_dos):
-		df0, e_label, w_label = self.OpenBand(tol, under_tol)
-		e_min, e_max = self.CalcEnergyMinMax(df0, e_label)
-		e_range = np.linspace(e_min, e_max, bins)
+		return band
+	
+	def MakeDOS0(self, dt, bins, eta, tol, band): # partial dos
+		df0 = band['df']
+		e_label = band['e_label']
+		w_label = band['w_label']
+		e_range = band['e_range']
 
 		f_label = ['x%d' % i for i in range(bins)]
 		x_label = self.params + f_label
 
 		df = pd.DataFrame()
 
-		for i in df0.index.to_list():
+		for i in df0.index:
 			dos_list = list(df0.loc[i, self.params])
 			for e in e_range:
 				dos = 0
@@ -190,12 +181,24 @@ class MagStr:
 			data = pd.DataFrame([dos_list], index=[i], columns=x_label)
 			df = pd.concat([df, data], sort=False)
 
-		df.to_csv(fn_dos, sep=',')
+		return df
 
-	def MakeDOS1(self, tol, bins, eta, under_tol, broadening, fn_dos):
-		df0, e_label, w_label = self.OpenBand(tol, under_tol)
-		e_min, e_max = self.CalcEnergyMinMax(df0, e_label)
-		e_range = np.linspace(e_min, e_max, bins)
+	def MakeDOS1(self, dt, bins, eta, tol, band): # hsp dos
+		df0 = band['df']
+		e_label = band['e_label']
+		w_label = band['w_label']
+		e_range = band['e_range']
+
+		# options
+		if re.search('m', dt): df0 = df0[df0['m'] < tol]
+		else:                  df0 = df0[df0['m'] > tol]
+
+		if re.search('f', dt): w_fermi = [1 if e < 0 else 0 for e in e_range] 
+		else:                  w_fermi = [1 for e in e_range]
+
+		if re.search('b', dt): eta_brden = [0.1 + e/e_range.min() if e < 0 else 0.1 + e/e_range.max() for e in e_range]
+		else:                  eta_brden = [eta for e in e_range]
+
 		n_hsp = len(e_label) // self.Nb
 
 		f_label = []
@@ -212,25 +215,26 @@ class MagStr:
 
 		df = pd.DataFrame()
 
-		for i in df0.index.to_list():
+		for i in df0.index:
 			dos_list = list(df0.loc[i, self.params])
 			for hsp in range(n_hsp):
-				for e in e_range:
+				for e, wf, etab in zip(e_range, w_fermi, eta_brden):
 					dos = 0
 					for el, wl in zip(e_label_sp[hsp], w_label_sp[hsp]):
-						dos += (eta / ((e - df0.loc[i, el])**2 + eta**2)) * df0.loc[i, wl]
+						dos += (etab / ((e - df0.loc[i, el])**2 + etab**2)) * df0.loc[i, wl] * wf
 					dos_list.append(dos / np.pi)
 			data = pd.DataFrame([dos_list], index=[i], columns=x_label)
 			df = pd.concat([df, data], sort=False)
 
-		df.to_csv(fn_dos, sep=',')
+		return df
 	
-	def MakeDOS2(self, tol, bins, eta, under_tol, broadening, fn_dos):
-		df0, e_label, _ = self.OpenBand(tol, under_tol)
-		e_min, e_max = self.CalcEnergyMinMax(df0, e_label)
-		e_range = np.linspace(e_min, e_max, bins+1)
+	def MakeDOS2(self, dt, bins, eta, tol, band): # full dos
+		df0 = band['df']
+		e_label = band['e_label']
+		w_label = band['w_label']
+		e_range = band['e_range']
 
-		f_label = ['x%d' % i for i in range(bins)]
+		f_label = ['x%d' % i for i in range(bins-1)]
 		x_label = self.params + f_label
 
 		df = pd.DataFrame()
@@ -238,7 +242,7 @@ class MagStr:
 		dir_list = [self.path_output + dir for dir in os.listdir(self.path_output) if not re.search('magstr', dir)]	
 
 		for dir in dir_list:
-			fn_list = [dir +'/'+ fn for fn in os.listdir(dir) if re.match('dos_', fn)]
+			fn_list = [dir +'/'+ fn for fn in os.listdir(dir) if re.match('dos', fn)]
 			idx_list = MakeGroundIdx(fn_list, dtype='dos', exclude_f=True)
 
 			for i in idx_list:
@@ -256,61 +260,119 @@ class MagStr:
 
 					d = np.transpose(d)
 					d = pd.DataFrame(d[1:, :], columns=d[0, :]).sum()
-					x = [e - fn_dict['dntop'] for e in d.index.to_list()]
+					x = [e - fn_dict['dntop'] for e in d.index]
 					h, _ = np.histogram(x, bins=e_range, weights=list(d))
 					dos_list += list(h)
 
 					data = pd.DataFrame([dos_list], columns=x_label)
 					df = pd.concat([df, data], sort=False)
 
-		df = df.reset_index(drop=True)
-		df.to_csv(fn_dos, sep=',')
+		return df
 
-	def DoRandomForest(self, dtype, tol, bins, eta, rsp='', test_size=0.3):
+	def MakeDOS(self, dtype, bins, eta, tol):
+		t0 = time.time()
+
+		dts = dtype.split(sep='-') # dtype = 'dtype-ptype-pnum'
+		tol = float(tol)
+		bins = int(bins)
+		eta = float(eta)
+
+		dn = '%s/magstr/dos_dt%s_bins%d_eta%.3f_tol%.3f.csv' % (self.path_output, dtype, bins, eta, tol)
+
+		d_dict = {
+			'0': self.MakeDOS0,
+			'1': self.MakeDOS1,
+			'2': self.MakeDOS2,
+		}
+
+		band = self.OpenBand(dts, bins)
+		df = d_dict[dts[0][0]](dts[0][1:], bins, eta, tol, band)
+		df = df.reset_index(drop=True)
+		df.to_csv(dn, sep=',')
+
+		t1 = time.time()
+		print('MakeDOS(%s) : %fs' % (dn, t1-t0))
+
+	def Resample(self, rspn, X, y):
+		from imblearn.under_sampling import RandomUnderSampler
+		from imblearn.under_sampling import NearMiss
+		from imblearn.under_sampling import EditedNearestNeighbours
+		from imblearn.under_sampling import CondensedNearestNeighbour
+
+		rsp_dict = {
+			'rus': RandomUnderSampler(random_state=1),
+			'nm':  NearMiss(version=1),
+			'enn': EditedNearestNeighbours(),
+			'cnn': CondensedNearestNeighbour(random_state=1),
+		}
+
+		rsp = rsp_dict[rspn]
+
+		X_rsp, y_rsp = rsp.fit_resample(X, y)
+		X_rsp.index = X.index[rsp.sample_indices_]
+		y_rsp.index = y.index[rsp.sample_indices_]
+
+		return X_rsp, y_rsp
+
+	def LearnOrTune(self, dtype, bins, eta, tol, mcn, rspn):
 		from sklearn.ensemble import RandomForestClassifier
+		from sklearn.linear_model import LogisticRegression
+		from xgboost import XGBClassifier
+		from lightgbm import LGBMClassifier
+		from catboost import CatBoostClassifier	
+		from sklearn.preprocessing import OneHotEncoder
+		from sklearn.model_selection import StratifiedKFold, RandomizedSearchCV
+
+		t0 = time.time()
 
 		tol = float(tol)
 		bins = int(bins)
 		eta = float(eta)
-		test_size = float(test_size)
+		mcn = mcn.split(sep='_')
 
-		df = pd.read_csv('%s/magstr/dos_ptype%s_pnum%d_dtype%s_tol%.3f_bins%d_eta%.3f.csv' % (self.path_output, self.ptype, self.pnum, dtype, tol, bins, eta), sep=',', index_col=0)
+		mc_dict = {
+			'rf':  RandomForestClassifier(random_state=1),
+			'lr': LogisticRegression(random_state=1, multi_class='multinomial', max_iter=10000),
+			'xgb': XGBClassifier(random_state=1),
+			'lgb': LGBMClassifier(random_state=1),
+			'cat': CatBoostClassifier(random_state=1, silent=True),
+		}
+		hp_dict = {
+			'rf': {
+				'random_state': 1,
+			}
+		}
+		mc = mc_dict[mcn[0]]
+
+		# prepare data
+		dn = '%s/magstr/dos_dt%s_bins%d_eta%.3f_tol%.3f.csv' % (self.path_output, dtype, bins, eta, tol)
+		df = pd.read_csv(dn, sep=',', index_col=0)
+
 		X = df.drop(self.params, axis=1)
 		y = df['type']
+		if mcn[0] == 'xgb': y = pd.get_dummies(y)
+		if rspn: X, y = self.Resample(rspn, X, y)
+		idxs = y.index.to_list()
 
-		if rsp != '':
-			from imblearn.under_sampling import RandomUnderSampler
-			from imblearn.under_sampling import NearMiss
-			from imblearn.under_sampling import EditedNearestNeighbours
-			from imblearn.under_sampling import CondensedNearestNeighbour
-
-			if   rsp == 'rus': rsp = RandomUnderSampler(random_state=1)
-			elif rsp == 'nm':  rsp = NearMiss(version=1)
-			elif rsp == 'enn': rsp = EditedNearestNeighbours()
-			elif rsp == 'cnn': rsp = CondensedNearestNeighbour(random_state=1)
-			else: 
-				print('%s is wrong resampler\n' % rsp)
-				sys.exit()
-
-			X_rsp, y_rsp = rsp.fit_resample(X, y)
-			X_rsp.index = X.index[rsp.sample_indices_]
-			y_rsp.index = y.index[rsp.sample_indices_]
-
-			X = X_rsp
-			y = y_rsp
-
-		X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=test_size, stratify=y, random_state=1)
-
-		rf = RandomForestClassifier(criterion='gini', random_state=1)
-		rf.fit(X_train, y_train)
-		y_pred = rf.predict(X_test)
-		y_score = rf.predict_proba(X_test)
-		acc = accuracy_score(y_test, y_pred)
+		X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, stratify=y, random_state=1)
 		
-		return acc, y_test, y_pred, y_score, y.index.to_list(), rf.estimators_, rf.feature_importances_
+		# Learn
+		if len(mcn) < 2:
+			mc.fit(X_train, y_train)
 
-	def DoLogisticRegression(self):
-		from sklearn.preprocessing import StandardScaler
-		from sklearn.linear_model import LogisticRegression
+			t1 = time.time()
+			print('Learn(%s-%s-%s) : %fs' % (mcn[0], rspn, dn, t1-t0))
 
-		return 0
+			return mc, idxs, X_test, y_test
+
+		# Tune
+		else:
+			cv = StratifiedKFold(random_state=1)
+			tn = RandomizedSearchCV(mc, hp_dict[mcn[0]], cv, random_state=1)
+			res = tn.fit(X_train, y_train)
+
+			t1 = time.time()
+			print('Tune(%s-%s-%s) : %fs' % (mcn[0], rspn, dn, t1-t0))
+
+			return res
+		
