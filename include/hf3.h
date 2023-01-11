@@ -16,6 +16,7 @@
 
 #include <omp.h>
 #include <math.h>
+#include <hdf5.h>
 #include <time.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -31,6 +32,7 @@ typedef struct Coordinate {
 
 typedef struct Cell {
 	char *name; // name of material
+	char *save; // name of directory to save output
 	char *type; // type of magnetic structure
 	char sys[16]; // system
 	char bas[16]; // basis

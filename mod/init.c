@@ -3,7 +3,7 @@
 #include "hf3.h" 
 
 int main(int argc, char *argv[]) {
-	if(argc < 4) {
+	if(argc < 2) {
 		printf("%s <name> <type> <tb_only> : initialize input files\n", argv[0]);
 		exit(1);
 	}
@@ -34,7 +34,7 @@ int main(int argc, char *argv[]) {
 
 	void (*Fourier)(Cell, int, Coord, int, Lattice*, lapack_complex_double*);
 	if(strstr(c.bas, "q")) Fourier = FourierQ;
-	else Fourier = Fourier0;
+	else                   Fourier = Fourier0;
 
 	CalcTB(c, ltype, Fourier);
 

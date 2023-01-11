@@ -12,7 +12,7 @@ void Init12(double *m) {m[0] = 0.1; m[1] = 1.0; m[2] = 1.0;}
 
 int main(int argc, char *argv[]) {
 	if(argc < 2) {
-		printf("%s <name> <J/U> <SOC> <type> <N> <U> : make Hartree-Fock approximated 3-band Hubbard model\n", argv[0]);
+		printf("%s <name> <J/U> <SOC> <type> <N> <U> <save> : make Hartree-Fock approximated 3-band Hubbard model\n", argv[0]);
 		exit(1);
 	}
 	omp_set_num_threads(1);
@@ -22,7 +22,8 @@ int main(int argc, char *argv[]) {
 
 	Cell c = {
 		.name = argv[1],
-		.type = argv[4]
+		.type = argv[4],
+		.save = argv[7],
 	};
 	ReadCell(&c);
 
@@ -74,7 +75,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	char dir[1024];
-	sprintf(dir, "output/%s/JU%.2f_SOC%.2f", c.name, s.JU, s.SOC);
+	sprintf(dir, "output/%s/JU%.2f_SOC%.2f", c.save, s.JU, s.SOC);
 	if(-access(dir, 0)) mkdir(dir, 0755);
 
 	LAPACK lp = {

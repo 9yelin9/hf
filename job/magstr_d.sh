@@ -10,10 +10,10 @@
 t0=$(date +%s.%N)
 t0_string=$(date)
 
-py hf3.py -n baoso3 -ms d 1m-1-2 100 0.5 1.0
-py hf3.py -n baoso3 -ms d 1f-1-2 100 0.5 1.0
-py hf3.py -n baoso3 -ms d 1b-1-2 100 0.5 1.0
-py hf3.py -n baoso3 -ms d 1fb-1-2 100 0.5 1.0
+for eta in `seq 0.1 0.1 0.5`
+do
+	./mod/dos d 1 $eta
+done
 
 t1=$(date +%s.%N)
 t1_string=$(date)

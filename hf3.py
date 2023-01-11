@@ -23,9 +23,10 @@ parser.add_argument('-dr', '--draw',   nargs='+', default=None, help='b  <J/U> <
 																	+'p  <J/U> <SOC> <type> <tol_gap> <tol_mag> : DrawPhase\n'\
 																	+'pc <J/U> <SOC> <type1> <type2>            : DrawPhaseCheck\n'\
 																	+'s  <J/U> <SOC> <type> <N> <U>             : DrawSolution\n')
-parser.add_argument('-ms', '--magstr', nargs='+', default=None, help='b  <ptype> <pnum>                         : MakeBand\n'\
-																	+'d  <dtype> <bins> <eta> <tol>             : MakeDOS\n'\
-																	+'lt <dtype> <bins> <eta> <tol> <mc> <rsp>  : LearnOrTune\n')
+parser.add_argument('-ms', '--magstr', nargs='+', default=None, help='b                                         : MakeBand\n'\
+																	+'d  <dtype> <eta>                          : MakeDOS\n'\
+																	+'rd <dtype> <eta> <bins> <tol>             : ReduceDOS\n'\
+																	+'lt <dtype> <eta> <bins> <tol> <mc> <rsp>  : LearnOrTune\n')
 args = parser.parse_args()                                                                     
 
 # set path_input and path_output
@@ -50,7 +51,7 @@ info_path, info_cell = ReadInfo(path_input)
 # draw
 if args.draw:
 	from pyhf3 import draw
-	dr = draw.Draw(path_input, path_output, info_path, info_cell, args.draw[1], args.draw[2])
+	dr = draw.Draw(path_input, path_output, info_path, args.draw[1], args.draw[2])
 
 	if   args.draw[0] == 'b':  dr.DrawBandDOS(args.draw[3], args.draw[4], args.draw[5])
 	elif args.draw[0] == 'bu': dr.DrawBandDOS(args.draw[3], args.draw[4], args.draw[5], 1)
@@ -66,9 +67,10 @@ if args.magstr:
 	from pyhf3 import magstr
 	ms = magstr.MagStr(path_output, info_path, info_cell)
 
-	if   args.magstr[0] == 'b':  ms.MakeBand(args.magstr[1], args.magstr[2])
-	elif args.magstr[0] == 'd':  ms.MakeDOS(args.magstr[1], args.magstr[2], args.magstr[3], args.magstr[4])
-	elif args.magstr[0] == 'lt': ms.LearnOrTune(args.magstr[1], args.magstr[2], args.magstr[3], args.magstr[4], args.magstr[5], args.magstr[6])
+	if   args.magstr[0] == 'b':  ms.GenBand()
+	elif args.magstr[0] == 'd':  ms.MakeDOS(args.magstr[1], args.magstr[2])
+	elif args.magstr[0] == 'rd': ms.ReduceDOS(args.magstr[1], args.magstr[2], args.magstr[3], args.magstr[4])
+	elif args.magstr[0] == 'lt': ms.Train(args.magstr[1], args.magstr[2], args.magstr[3], args.magstr[4], args.magstr[5], args.magstr[6])
 	sys.exit()
 
 ###############################################################################################################################################

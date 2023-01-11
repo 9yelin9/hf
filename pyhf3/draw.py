@@ -8,7 +8,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
-from .read import ReadFn, MakeGroundIdx
+from .read import ReadFn, GenGroundIdx
 
 class Draw:
 	def __init__(self, path_input, path_output, info_path, info_cell, JU, SOC):
@@ -172,7 +172,7 @@ class Draw:
 		N_list = []
 		U_list = []
 
-		idx_list = MakeGroundIdx(fn_list)
+		idx_list = GenGroundIdx(fn_list)
 
 		for i in idx_list:
 			fn = fn_list[i]

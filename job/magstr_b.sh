@@ -10,11 +10,7 @@
 t0=$(date +%s.%N)
 t0_string=$(date)
 
-py hf3.py -n baoso3 -ms b 0 0
-py hf3.py -n baoso3 -ms b 1 2
-py hf3.py -n baoso3 -ms b 1 20
-py hf3.py -n baoso3 -ms b 2 2
-py hf3.py -n baoso3 -ms b 2 20
+py hf3.py -n baoso3_ms -ms b
 
 t1=$(date +%s.%N)
 t1_string=$(date)

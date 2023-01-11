@@ -310,11 +310,11 @@ void CalcTB(Cell c, char *ltype, void (*Fourier)()) {
 void DataName(Cell c, Solution *s, char *dtype, char *dn) {
 	if(strstr(dtype, "sol")) {
 		sprintf(dn, "output/%s/JU%.2f_SOC%.2f/%s_%s_N%.1f_U%.1f_%s.txt",\
-				c.name, s->JU, s->SOC, dtype, c.type, s->N, s->U, s->runtime);
+				c.save, s->JU, s->SOC, dtype, c.type, s->N, s->U, s->runtime);
 	}
 	else {
 		sprintf(dn, "output/%s/JU%.2f_SOC%.2f/%s_%s_N%.1f_U%.1f_n%.16f_m%.16f_e%.16f_gap%.16f_fermi%.16f_dntop%.16f_%s.txt",\
-				c.name, s->JU, s->SOC, dtype, c.type, s->N, s->U, s->ns, s->ms, s->e, s->gap, s->fermi, s->dntop, s->runtime);
+				c.save, s->JU, s->SOC, dtype, c.type, s->N, s->U, s->ns, s->ms, s->e, s->gap, s->fermi, s->dntop, s->runtime);
 	}
 }
 

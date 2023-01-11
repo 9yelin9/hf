@@ -11,13 +11,14 @@ t0=$(date +%s.%N)
 t0_string=$(date)
 
 SOC=0
+SAVE="baoso3"
 for ju in `seq 0.0 0.1 0.3`
 do
 	for n in `seq 0.2 0.2 11.8`
 	do
 		for u in `seq 0 0.5 5.0`
 		do
-			./mod/hf3 baoso3 $ju $SOC a1 $n $u
+			./mod/hf3 baoso3 $ju $SOC a1 $n $u $SAVE
 		done
 	done
 done
