@@ -18,7 +18,7 @@ do
 	do
 		for u in `seq 0 0.5 5.0`
 		do
-			./mod/hf3 baoso3 $ju $SOC f $n $u $SAVE
+			./mod/hf3 baoso3 $SAVE $ju $SOC f $n $u
 		done
 	done
 done

@@ -5,10 +5,11 @@
 
 #define USE_MATH_DEFINES
 
-#define DIM 3 // dimension
+#define DIM  3 // dimension
 #define Nkg1 32 // num of Gauss-Legendre quadrature points (in 1D)
-#define Nkg 32768 // num of Gauss-Legendre quadrature points (in 3D) = (Nkg1)^3
-#define Nkb 1024 // num of band path points
+#define Nkg  32768 // num of Gauss-Legendre quadrature points (in 3D) = (Nkg1)^3
+#define Nkb  1024 // num of band path points
+//#define ETA  0.05 // broadening rate of DOS
 
 #define CVG_MAX 3 // max count of checking convergence
 
@@ -41,6 +42,7 @@ typedef struct Cell {
 	int Ns; // num of sites = Ni * Nc
 	int Nb; // num of bases = Ni * Nc * 2(spin up and dn)
 	int Nbb; // num of block = Nb * Nb
+	double eta; // broadening rate of DOS
 	Coord q; // ordering vector
 } Cell;
 
@@ -89,6 +91,10 @@ typedef struct Energy {
 	double max;
 } Energy;
 
+void DoNothing();
+void GetDimsH5(char *fn, char *dn, hsize_t *dims);
+void ReadH5(char *fn, char *dn, double *val);
+void WriteH5(char *fn, char *dn, int dim, hsize_t *dims, double *val);
 FILE* OpenFile(char *fn, char *mode); // open file
 void ReadBin(char *fn, int size, void *v); // read binary files
 void ReadCell(Cell *c); // read cell info in cell.txt

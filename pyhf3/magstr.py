@@ -1,36 +1,57 @@
 # pyhf3/magstr.py : predict magnetic structure of Hartree-Fock approximated 3-band Hubbard model
 
 import os
-os.environ['OMP_NUM_THREADS'] = '1'
-os.environ['OPENBLAS_NUM_THREADS'] = '1'
-
 import re
+import sys
 import h5py
 import time
 import numpy as np
 import pandas as pd
+import matplotlib
 import matplotlib.pyplot as plt
-from sklearn.preprocessing import OneHotEncoder
-from sklearn.metrics import accuracy_score
-from sklearn.model_selection import train_test_split, StratifiedKFold, RandomizedSearchCV
+from scipy import interpolate
+from itertools import product 
 
+from sklearn.preprocessing import OneHotEncoder
+from sklearn.metrics import accuracy_score, confusion_matrix, ConfusionMatrixDisplay, roc_curve, auc
+from sklearn.model_selection import train_test_split, StratifiedKFold, RandomizedSearchCV
+from sklearn.preprocessing import label_binarize
+from sklearn import tree
+
+# classifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from xgboost import XGBClassifier
 from lightgbm import LGBMClassifier
 from catboost import CatBoostClassifier	
+from sklearn.svm import SVC
 
-from .read import ReadFn, ReadFnDMFT, GenGroundIdx
+# regressor
+from sklearn.linear_model import LinearRegression
+
+# resampler
+from imblearn.under_sampling import RandomUnderSampler
+from imblearn.under_sampling import NearMiss
+from imblearn.under_sampling import EditedNearestNeighbours
+from imblearn.under_sampling import CondensedNearestNeighbour
+
+from .read import ReadInfo, ReadFn, GenGroundIdx
 
 class MagStr:
-	def __init__(self, path_output, info_path, info_cell):
-		self.path_output = path_output
+	def __init__(self, name, num_thread=1):
+		self.path_input, self.path_output, self.info_path, _ = ReadInfo(name);
+		self.path_save = self.path_output + '/magstr/'
+		os.makedirs(self.path_save, exist_ok=True)
 
 		info_path_nodup = [] # drop duplicated hsp
-		for point, label in info_path:
+		for point, label in self.info_path:
 			if label not in [label for point, label in info_path_nodup]:
 				info_path_nodup.append([point, label])
-		self.info_path = info_path_nodup
+		self.points = [point for point, _ in info_path_nodup]
+		self.labels = [label for _, label in info_path_nodup]
+
+		self.points_g = [point for point, _ in self.info_path]
+		self.labels_g = [label.replace('G', r'$\Gamma$') for _, label in self.info_path]
 
 		#self.info_cell = info_cell
 		#self.Ni = self.info_cell['a'][0]
@@ -39,66 +60,126 @@ class MagStr:
 
 		self.Nbs = 12
 		self.Nhsp = 4
-		self.BINS_MAX = 8193
-		self.tol_U = 0.1
+		self.BINS_MAX = 1024
+		self.PEAK_MAX = 2
+		self.emin = -8
+		self.emax =  8
 
-		self.type_dict = {'a':'1', 'c':'2', 'g':'3'}
+		self.type_dict   = {'a':1, 'c':2, 'g':3}
+		self.type_dict_r = {'1':'a', '2':'c', '3':'g'}
 
 		self.params1 = ['type', 'JU', 'N', 'U']
-		self.params2 = ['m', 'dntop', 'gap']
+		self.params2 = ['m', 'fermi', 'gap']
 		self.params = self.params1 + self.params2
 
-		self.mc_dict = {
-			'rf': RandomForestClassifier(random_state=1, n_jobs=1),
-			'lr': LogisticRegression(random_state=1, n_jobs=1, multi_class='multinomial', max_iter=10000),
-			'xgb': XGBClassifier(random_state=1, nthread=1),
-			'lgb': LGBMClassifier(random_state=1, n_jobs=1),
-			'cat': CatBoostClassifier(random_state=1, silent=True),
+		self.rsp_dict = {
+			'rus': RandomUnderSampler(random_state=1),
+			'nm':  NearMiss(version=1),
+			'enn': EditedNearestNeighbours(),
+			'cnn': CondensedNearestNeighbour(random_state=1),
 		}
 
-		self.figsize=(11, 6)
+		random_state = 1
+		self.mc_dict = {
+			'rf': {
+				'func': RandomForestClassifier(random_state=random_state, n_jobs=num_thread),
+				'onehot': False,
+			},
+			'xgb': {
+				'func': XGBClassifier(random_state=random_state, nthread=num_thread),
+				'onehot': True,
+			},
+			'lgb': {
+				'func': LGBMClassifier(random_state=random_state, n_jobs=num_thread),
+				'onehot': False,
+			},
+			'cat': {
+				'func': CatBoostClassifier(random_state=random_state, thread_count=num_thread, silent=True),
+				'onehot': False,
+			},
+			'lr': {
+				'func': LogisticRegression(random_state=random_state, n_jobs=num_thread, multi_class='multinomial', max_iter=10000),
+				'onehot': False,
+			},
+			'svm': {
+				'func': SVC(random_state=random_state, probability=True),
+				'onehot': False,
+			},
+		}
 
-		os.makedirs('%s/magstr/' % path_output, exist_ok=True)
+		self.rc_dict = {
+			'lr': LinearRegression(n_jobs=num_thread),
+		}
 
-	def GenBand(self):
-		pn = '%s/magstr/params.txt' % (self.path_output)
-		bn = '%s/magstr/band.txt' % (self.path_output)
+		self.figsize=(11, 5)
+		plt.rcParams.update({'font.size': 35})
+		plt.rcParams.update({'font.family': 'sans-serif'})
+		plt.rcParams.update({'font.serif': 'Helvetica Neue'})
+		#plt.rcParams.update({'mathtext.fontset': 'cm'})
+
+	def GenEnergy(self):
+		t0 = time.time()
+
+		en = '%s/energy.h5' % self.path_save
+		e = np.linspace(self.emin, self.emax, self.BINS_MAX)
+		with h5py.File(en, 'w') as f: f.create_dataset('energy', data=e, dtype='d')
+
+		t1 = time.time()
+		print('GenEnergy(%s) : %fs' % (en, t1-t0))
+
+	def GenBand(self, btype, dfermi=100):
+		pn = '%s/params_%s.txt' % (self.path_save, btype)
+		bn = '%s/band_%s.txt' % (self.path_save, btype)
 		Fp = open(pn, 'w')
 		Fb = open(bn, 'w')
 
 		t0 = time.time()
 
+		with h5py.File('%s/energy.h5' % self.path_save, 'r') as f: energy = f['energy'][()]
+
 		fn_list = ['%s/%s/%s' % (self.path_output, d, f)\
-				for d in os.listdir(self.path_output)   if re.match('JU',    d)\
-				for f in os.listdir(self.path_output+d) if re.match('band_', f)]
+				for d in os.listdir(self.path_output)     if re.search('JU',    d)\
+				for f in os.listdir(self.path_output + d) if re.search('band_', f)]
 		fn_list = [fn_list[i] for i in GenGroundIdx(fn_list, exclude_f=True)] 
+		if   btype == 'M': fn_list = [fn for fn in fn_list if ReadFn(fn)['m'] > 1e-1]
+		elif btype == 'G': fn_list = [fn for fn in fn_list if ReadFn(fn)['gap'] > 1e-2 and (ReadFn(fn)['N']*10)%10 == 0]
 
-		Fp.write('%d\n' % len(fn_list))
-		Fb.write('%d\n' % len(fn_list))
-
-		points = [point for point, _ in self.info_path]
-		labels = [label for _, label in self.info_path]
-
+		#Fb.write('%d\n' % (len(fn_list) * dfermi))
 		for p in self.params1: Fp.write('%10s' % p)
 		for p in self.params2: Fp.write('%22s' % p)
 		Fp.write('\n')
 
-		for b in ['%s%s%d' % (t, l, n) for t in ['e', 'w'] for l in labels for n in range(self.Nbs)]: Fb.write('%22s' % b)
+		for b in ['%s%s%d' % (t, l, n) for t in ['e', 'w'] for l in self.labels for n in range(self.Nbs)]: Fb.write('%22s' % b)
 		Fb.write('\n')
 
 		band = []
 		for fn in fn_list:
 			fn_dict = ReadFn(fn)
-			for key, val in self.type_dict.items(): fn_dict['type'] = fn_dict['type'][0].replace(key, val)
-			
-			for p in self.params1: Fp.write('%10s'    % fn_dict[p])
-			for p in self.params2: Fp.write('%22.16f' % fn_dict[p])
-			Fp.write('\n')
-			
-			with open(fn, 'r')                        as fb: db = np.genfromtxt(fb) - fn_dict['dntop']
-			with open(re.sub('band', 'ufw', fn), 'r') as fu: du = np.genfromtxt(fu)
-			for b in np.hstack((np.ravel(db[points]), np.ravel(du[points]))): Fb.write('%22.16f' % b)
-			Fb.write('\n')
+			fn_dict['type'] = self.type_dict[fn_dict['type'][0]] + float(fn_dict['type'][1]) * 0.1
+
+			with open(fn, 'r')                        as f: db = np.genfromtxt(f)
+			with open(re.sub('band', 'ufw', fn), 'r') as f: du = np.genfromtxt(f)
+
+			dntop = np.max(db[:, int(fn_dict['N'])-1])
+			upbot = np.min(db[:, int(fn_dict['N'])])
+			fermi_list = np.linspace(dntop, upbot, dfermi+20)
+
+			if btype == 'M':
+				for p in self.params1: Fp.write('%10.1f'  % fn_dict[p])
+				for p in self.params2: Fp.write('%22.16f' % fn_dict[p])
+				Fp.write('\n')
+
+				for b in np.hstack((np.ravel(db[self.points] - fn_dict['fermi']), np.ravel(du[self.points]))): Fb.write('%22.16f' % b)
+				Fb.write('\n')
+			elif btype == 'G':
+				for fermi in fermi_list[10:-10]:
+					fn_dict['fermi'] = fermi
+					for p in self.params1: Fp.write('%10.1f'  % fn_dict[p])
+					for p in self.params2: Fp.write('%22.16f' % fn_dict[p])
+					Fp.write('\n')
+
+					for b in np.hstack((np.ravel(db[self.points] - fermi), np.ravel(du[self.points]))): Fb.write('%22.16f' % b)
+					Fb.write('\n')
 
 		Fp.close()
 		Fb.close()
@@ -106,79 +187,160 @@ class MagStr:
 		t1 = time.time()
 		print('GenBand(%s, %s) : %fs' % (pn, bn, t1-t0))
 
-	def GenDOSDMFT(self, dtype, eta):
-		df0, dn, e_range, e_label, w_label = self.OpenBand(dtype, eta)
+	def GenDOSL(self, btype, eta=0.1): # Local DOS
+		eta = float(eta)
 
-		path_spec = '/home/Shared/BaOsO3/dmft_spec/'
-		dir_list = [path_spec + dir for dir in os.listdir(path_spec)\
-				if (re.match('oDir', dir)\
-				and float(re.sub('AF', '', re.search('AF\d', dir).group())) > 0\
-				and float(re.sub('_D', '', re.search('_D\d+[.]\d+', dir).group())) < 0.1\
-				and len(os.listdir(path_spec + dir)) > 1)]
+		pn = '%s/params_%s.txt' % (self.path_save, btype)
+		dn = '%s/dos_%sL_eta%.2f.h5' % (self.path_save, btype, eta)
+		with open(pn, 'r') as f: p = np.genfromtxt(f, skip_header=1)
+		with h5py.File('%s/energy.h5' % self.path_save, 'r') as f: e = f['energy'][()]
 
-		n_hsp = len(e_label) // self.Nbs
+		t0 = time.time()		
 
-		p_label = []
-		f_label = []
-		e_label_sp = [[] for _ in range(n_hsp)]
-		w_label_sp = [[] for _ in range(n_hsp)]
+		dos = np.zeros(self.BINS_MAX)
+		for i in range(p.shape[0]):
+			t = p[i, 0] * 10
+			dir_name = '%s/JU%.2f_SOC%.2f' % (self.path_output, p[i, 1], 0)
+			dos_name = 'dos_%s_eta%.2f_N%.1f_U%.1f' % ('%s%d' % (self.type_dict_r[str(int(t//10))], t%10), eta, p[i, 2], p[i, 3])
+			fn = ['%s/%s' % (dir_name, fn) for fn in os.listdir(dir_name) if re.search(dos_name, fn)][0]
 
-		for i in range(n_hsp):
-			p_label.append(re.sub('e', '', e_label[self.Nbs*i].split('_')[0]))
-			for j in range(self.max_bins):
-				f_label.append('%s_%d' % (p_label[i], j))
-			for j in range(self.Nbs):
-				e_label_sp[i].append(e_label[self.Nbs*i + j])
-				w_label_sp[i].append(w_label[self.Nbs*i + j])
-		x_label = self.params + f_label
+			with open(fn, 'r') as f: data = np.genfromtxt(f)
+			data_e   = data[:, 0]
+			data_dos = np.sum(data[:, 1:], axis=1)
 
-		df = pd.DataFrame()
+			itp = interpolate.interp1d(data_e, data_dos)
+			dos = np.vstack((dos, itp(e)))
 
-		for dir in dir_list:
-			dir_lat = dir + '/lattice/vdx/'
-			G_list = [dir_lat +'/'+ fn for fn in os.listdir(dir_lat) if re.search('_kG.*_ep%.2f' % eta, fn)]
+		dos = np.delete(dos, 0, axis=0)
+		with h5py.File(dn, 'w') as f: f.create_dataset('dos', data=dos, dtype='d')
 
-			mag_dat = open(dir + '/result/%s/mag.dat' % os.listdir(dir + '/result/')[0], 'r')
-			m = np.genfromtxt(mag_dat)[-1, 2] * 2
-			mag_dat.close()
+		t1 = time.time()
+		print('GenDOSL(%s) : %fs' % (dn, t1-t0))
 
-			for G in G_list:
-				fn_list = [re.sub('_kG', '_k%s' % p, G) for p in p_label]
-				fn_dict = ReadFnDMFT(G)
-
-				dos = []
-				for p in self.params: dos.append(fn_dict[p])
-
-				for fn in fn_list:
-					f = open(fn, 'r')
-					d = np.genfromtxt(f)[:, :2]
-					f.close()
-
-					itp = interpolate.interp1d(d[:, 0], d[:, 1] * 6, kind='cubic', fill_value='extrapolate')
-					dos += list(itp(e_range))
-
-				data = pd.DataFrame([dos], columns=x_label)
-				data['m'] = m
-				df = pd.concat([df, data], sort=False)
-
-			df = df.replace({'0':'f', '1':'a', '2':'c', '3':'g'})
-
-		return df, dn
-
-	def Resample(self, rspn, X, y):
-		from imblearn.under_sampling import RandomUnderSampler
-		from imblearn.under_sampling import NearMiss
-		from imblearn.under_sampling import EditedNearestNeighbours
-		from imblearn.under_sampling import CondensedNearestNeighbour
-
-		rsp_dict = {
-			'rus': RandomUnderSampler(random_state=1),
-			'nm':  NearMiss(version=1),
-			'enn': EditedNearestNeighbours(),
-			'cnn': CondensedNearestNeighbour(random_state=1),
+	def ReadDn_(self, Dn):
+		Dn_dict = {
+			'type':  int(re.sub('AF', '', re.search('AF\d', Dn).group())),
+			'JU':    float(re.sub('Hz', '', re.search('Hz\d+[.]\d+', Dn).group())),
+			'N':     0,
+			'U':     float(re.sub('UF', '', re.search('UF\d+[.]\d+', Dn).group())),
+			'm':     0,
+			'fermi': 0,
+			'gap':   0,
 		}
+		
+		return Dn_dict
 
-		rsp = rsp_dict[rspn]
+	def GenDOSD(self, dtype, eta=0): # DMFT DOS
+		eta = float(eta)
+
+		if   dtype == 'K': dos = np.zeros(self.BINS_MAX * len(self.labels))
+		elif dtype == 'L': dos = np.zeros(self.BINS_MAX)
+		else:
+			print("'%s' is wrong dtype" % dtype)
+			sys.exit()
+
+		if eta > 0: dir_name = 'vdx'
+		else:       dir_name = 'matsu/ome_final_result'
+
+		with h5py.File('%s/energy.h5' % self.path_save, 'r') as f: e = f['energy'][()]
+		print(e)
+
+		t0 = time.time()		
+
+		pn = '%s/params_D%s_eta%.2f.txt' % (self.path_save, dtype, eta)
+		dn = '%s/dos_D%s_eta%.2f.h5' % (self.path_save, dtype, eta)
+
+		Fp = open(pn, 'w')
+		for p in self.params1: Fp.write('%10s' % p)
+		for p in self.params2: Fp.write('%22s' % p)
+		Fp.write('\n')
+
+		path_spec = '%s/dmft_spec' % self.path_output
+		d_list = ['%s/%s/lattice/%s' % (path_spec, d, dir_name) for d in os.listdir(path_spec)\
+				if (re.search('oDir', d)\
+				and float(re.sub('AF', '', re.search('AF\d', d).group())) > 0
+				and float(re.sub('UF', '', re.search('UF\d+[.]\d+', d).group())) > 4
+				and os.path.isdir('%s/%s/lattice/%s' % (path_spec, d, dir_name)))]
+
+		"""
+		#gn_list = ['%s/lattice/vdx/%s' % (d, f) for d in d_list for f in os.listdir(d+'/lattice/vdx') if re.search('kG.*ep%.2f' % eta, f)]
+		#rn_list = [re.sub('lattice\S+', 'result', gn) for gn in gn_list]
+
+		for i, rn in enumerate(rn_list):
+			rn_dict = self.ReadRn_(rn)
+			with open(rn + '/u%.3f/mag.dat'     % rn_dict['U'], 'r') as fr: rn_dict['m'] = np.genfromtxt(fr)[-1, 2] * 2
+			with open(rn + '/u%.3f/filling.dat' % rn_dict['U'], 'r') as fr: rn_dict['N'] = np.genfromtxt(fr)[-1, 1] / 4
+		"""
+
+		if eta > 0:
+			if dtype == 'K':
+				for d in d_list:
+					Dn_list = ['%s/%s' % (d, f) for f in os.listdir(d) if re.search('kG.*ep%.2f' % eta, f)]
+					for Dn_h_list in [[re.sub('kG', 'k%s'%l, Dn) for l in self.labels] for Dn in Dn_list]:
+						data_h_list = [np.genfromtxt(Dn_h) for Dn_h in Dn_h_list]
+
+						Dn_dict = self.ReadDn_(Dn_h_list[0])
+						for p in self.params1: Fp.write('%10.1f'  % Dn_dict[p])
+						for p in self.params2: Fp.write('%22.16f' % Dn_dict[p])
+						Fp.write('\n')
+
+						itp_list = [interpolate.interp1d(data_h[:, 0], data_h[:, 1] * 6, fill_value='extrapolate') for data_h in data_h_list]
+						dos = np.vstack((dos, np.ravel([itp(e) for itp in itp_list])))
+		else:
+			a_max = 3
+			if dtype == 'K':
+				for d in d_list:
+					Dn_list = [['%s/%s' % (d, f) for f in os.listdir(d) if re.search('optimal_spectral_functions_k%s' % l, f)] for l in self.labels]
+					for Dn_h_list in product(*[Dn_list[i] for i in range(self.Nhsp)]):
+						data_h_list = [np.genfromtxt(Dn_h) for Dn_h in Dn_h_list]
+						a_list = [[] for _ in Dn_h_list]
+
+						for i, data_h in enumerate(data_h_list):
+							for a in range(1, a_max+1):
+								if data_h[np.min(np.where(data_h[:, 0] > 0)), a] < 0.5: a_list[i].append(a)
+
+						if not sum([len(a) > 0 for a in a_list]) < 4:
+							Dn_dict = self.ReadDn_(Dn_h_list[0])
+							Dn_dict['N'] = int(''.join([re.sub('_tem', '', re.search('\d_tem', Dn_h).group()) for Dn_h in Dn_h_list]))
+
+							for a_h_list in product(*[a for a in a_list]):
+								for p in self.params1:      Fp.write('%10.1f'  % Dn_dict[p])
+								for p in self.params2[:-1]: Fp.write('%22.16f' % Dn_dict[p])
+								Fp.write('%22s\n' % ''.join([str(a_h) for a_h in a_h_list]))
+
+								itp_list = [interpolate.interp1d(data_h[:, 0], data_h[:, a_h] * 6, fill_value='extrapolate') for data_h, a_h in zip(data_h_list, a_h_list)]
+								dos = np.vstack((dos, np.ravel([itp(e) for itp in itp_list])))
+
+			else:
+				for d in d_list:
+					Dn_list = ['%s/%s' % (d, f) for f in os.listdir(d) if re.search('optimal_spectral_functions_LDOS', f)]
+					for Dn in Dn_list:
+						data = np.genfromtxt(Dn)
+						a_list = []
+
+						for a in range(1, a_max+1):
+							if data[np.min(np.where(data_h[:, 0] > 0)), a] < 0.5: a_list.append(a)
+
+						if not len(a_list) < 1:
+							Dn_dict = self.ReadDn_(Dn)
+
+							for a in a_list:
+								for p in self.params1:      Fp.write('%10.1f'  % Dn_dict[p])
+								for p in self.params2[:-1]: Fp.write('%22.16f' % Dn_dict[p])
+								Fp.write('%22s\n' % str(a))
+
+								itp = interpolate.interp1d(data[:, 0], data[:, a] * 6)
+								dos = np.vstack((dos, itp(e)))
+
+		Fp.close()
+		dos = np.delete(dos, 0, axis=0)
+		with h5py.File(dn, 'w') as f: f.create_dataset('dos', data=dos, dtype='d')
+			
+		t1 = time.time()
+		print('GenDOSD(%s, %s) : %fs' % (pn, dn, t1-t0))
+
+	def Resample_(self, X, y, resamp):
+		rsp = self.rsp_dict[resamp]
 
 		X_rsp, y_rsp = rsp.fit_resample(X, y)
 		X_rsp.index = X.index[rsp.sample_indices_]
@@ -186,184 +348,352 @@ class MagStr:
 
 		return X_rsp, y_rsp
 
-	def Preprocess(self, df, mcn, rspn):
+	def Preprocess_(self, kind, dn, feats):
+		dtype = re.sub('%s_'%kind, '', re.search('%s_[A-Za-z]+'%kind, dn).group())
+		eta = re.sub('eta', '', re.search('eta\d[.]\d+', dn).group())
+
+		if   re.search('D', dtype): pn = 'params_%s_eta%s.txt' % (dtype, eta)
+		else:                       pn = 'params_%s.txt' % dtype[0]
+
+		with open(self.path_save+pn, 'r')      as f: p = np.genfromtxt(f, skip_header=1)
+		with h5py.File(self.path_save+dn, 'r') as f: d = f[kind][()]
+
+		data = np.hstack((p, d))
+		df = pd.DataFrame(data, columns=feats)
+		df['type'] = df['type'].astype('int').astype('str').replace(self.type_dict_r)
+
+		return df
+
+	def PreprocessDOSFull_(self, dn, onehot, resamp):
+		if re.search('bins', dn): bins = int(re.sub('bins', '', re.search('bins\d+', dn).group()))
+		else                    : bins = self.BINS_MAX
+
+		if re.search('L', dn): feats = self.params + ['x%d' % i for i in range(bins)] 
+		else:                  feats = self.params + ['%s%d' % (l, i) for l in self.labels for i in range(bins)]
+
+		dtype = re.sub('%s_'%'dos', '', re.search('%s_[A-Za-z]+'%'dos', dn).group())
+		#eta = re.sub('eta', '', re.search('eta\d[.]\d+', dn).group())
+
+		if   re.search('D', dtype): pn = 'params_%s_eta%s.txt' % (dtype, eta)
+		else:                       pn = 'params_%s.txt' % dtype[0]
+
+		with open(self.path_save+pn, 'r')      as f: p = np.genfromtxt(f, skip_header=1)
+		with h5py.File(self.path_save+dn, 'r') as f: d = f['dos'][()]
+		data = np.hstack((p, d))
+
+		for eta in np.arange(0.2, 0.6, 0.1):
+			with open(self.path_save+pn, 'r') as f: p = np.genfromtxt(f, skip_header=1)
+			with h5py.File(self.path_save+re.sub('eta0.10', 'eta%.2f'%eta, dn), 'r') as f: d = f['dos'][()]
+			data = np.vstack((data, np.hstack((p, d))))
+
+		df = pd.DataFrame(data, columns=feats)
+		df['type'] = df['type'].astype('int').astype('str').replace(self.type_dict_r)
+
 		X = df.drop(self.params, axis=1)
 		y = df['type']
 
-		if mcn == 'xgb': y = pd.get_dummies(y)
-		if rspn != '': X, y = self.Resample(rspn, X, y)
-		#idx_rsp = y.index.to_list()
+		if onehot: y = pd.get_dummies(y)
+		if resamp != 'none': X, y = self.Resample_(resamp, X, y)
 
-		return X, y
+		return X, y, df
 
-	def Predict(self, mc, mcn, df, X_test, y_test):
-		y_pred = mc.predict(X_test)
+	def PreprocessDOS_(self, dn, onehot, resamp):
+		if re.search('bins', dn): bins = int(re.sub('bins', '', re.search('bins\d+', dn).group()))
+		else                    : bins = self.BINS_MAX
+
+		if re.search('L', dn): feats = self.params + ['x%d' % i for i in range(bins)] 
+		else:                  feats = self.params + ['%s%d' % (l, i) for l in self.labels for i in range(bins)]
+
+		df = self.Preprocess_('dos', dn, feats)
+
+		X = df.drop(self.params, axis=1)
+		y = df['type']
+
+		if onehot: y = pd.get_dummies(y)
+		if resamp != 'none': X, y = self.Resample_(resamp, X, y)
+
+		return X, y, df
+
+	def PreprocessPeak_(self, dn, onehot, resamp):
+		if re.search('bins', dn): bins = int(re.sub('bins', '', re.search('bins\d+', dn).group()))
+		else                    : bins = self.BINS_MAX
+
+		if re.search('L', dn): feats = self.params + ['x%d' % i for i in range(self.PEAK_MAX)] 
+		else:                  feats = self.params + ['%s%d' % (l, i) for l in self.labels for i in range(self.PEAK_MAX)]
+
+		df = self.Preprocess_('peak', dn, feats)
+
+		X = df.drop(self.params, axis=1)
+		y = df['type']
+
+		if onehot: y = pd.get_dummies(y)
+		if resamp != 'none': X, y = self.Resample_(resamp, X, y)
+
+		return X, y, df
+
+	def PreprocessMag_(self, dn, resamp):
+		if re.search('bins', dn): bins = int(re.sub('bins', '', re.search('bins\d+', dn).group()))
+		else                    : bins = self.BINS_MAX
+
+		if re.search('L', dn): feats = self.params + ['x%d' % i for i in range(bins)] 
+		else:                  feats = self.params + ['%s%d' % (l, i) for l in self.labels for i in range(bins)]
+
+		df = self.Preprocess_('dos', dn, feats)
+
+		X = df.drop(self.params, axis=1)
+		y = df['m']
+
+		if resamp != 'none': X, y = self.Resample_(resamp, X, y)
+
+		return X, y, df
+
+	def Predict_(self, X_test, y_test, df, mc, n_dict, onehot, verbose):
+		t0 = time.time()
+
+		y_pred  = mc.predict(X_test)
 		y_score = mc.predict_proba(X_test)
 
-		if mcn == 'xgb':
+		if onehot:
 			t_dict = {}
 			for i, col in enumerate(y_test.columns): t_dict[str(i)] = col
 			y_test = y_test.idxmax(axis=1)
 			y_pred = np.array([t_dict[str(np.argmax(y))] for y in y_pred])
 
-		# misclassified and well-classified data
-		idx_m = []
-		idx_w = []	
-		type_pred_m = []
-		type_pred_w = []
-		score_m = []
-		score_w = []
+		acc = accuracy_score(y_test, y_pred)
 
-		for i, y_true in enumerate(y_test):
-			if(y_true != y_pred[i]):
-				idx_m.append(y_test.index[i])
-				type_pred_m.append(y_pred[i])
-				score_m.append(list(map(str, y_score[i])))
-			else:
-				idx_w.append(y_test.index[i])
-				type_pred_w.append(y_pred[i])
-				score_w.append(list(map(str, y_score[i])))
+		df_test = df.loc[y_test.index, self.params]
+		df_test['type_p'] = y_pred
+		df_test['score'] = list(map(str, y_score))
+		
+		t1 = time.time()
+		if verbose: print('\n# Data : %s\n# Machine : %s\n# Resampler : %s\n# Accuracy : %f (%d/%d)\n# Elapsed Time : %fs\n'\
+				% (n_dict['d'], n_dict['mc'], n_dict['rsp'], acc, len(y_pred)-len(df_test[df_test['type'] != df_test['type_p']]), len(y_pred), t1-t0))
+		return y_test, y_pred, y_score, df_test
 
-		df_m = df.loc[idx_m, :]
-		df_w = df.loc[idx_w, :]
-		df_m['type_pred'] = type_pred_m
-		df_w['type_pred'] = type_pred_w
-		df_m['score'] = score_m
-		df_w['score'] = score_w
-
-		return y_test, y_pred, y_score, df_m, df_w
-
-	def Train(self, dn, mcn, rspn, tuning=False):
-		t0 = time.time()
-
-		hp_dict = {
-			'rf': {
-				'random_state': 1,
-			}
-		}
-		mc = mc_dict[mcn[0]]
-
-		# prepare data
-		df = pd.read_csv(dn, sep=',', index_col=0)
-
-		X, y = self.Preprocess(df, mcn[0], rspn)
+	def Tune(self, dn, mcn, resamp='none', verboes=True, dos_full=False):
+		if re.search('dos',  dn):
+			if dos_full: X, y, df = self.PreprocessDOSFull_(dn, onehot=self.mc_dict[mcn]['onehot'], resamp=resamp)
+			else:        X, y, df = self.PreprocessDOS_(dn, onehot=self.mc_dict[mcn]['onehot'], resamp=resamp)
+		elif re.search('peak', dn): X, y, df = self.PreprocessPeak_(dn, onehot=self.mc_dict[mcn]['onehot'], resamp=resamp)
+		else:
+			print("'%s' is wrong dn")
+			sys.exit()
 		X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, stratify=y, random_state=1)
 		
-		# train
-		if len(mcn) < 2:
-			mc.fit(X_train, y_train)
+		cv = StratifiedKFold(random_state=1)
+		tn = RandomizedSearchCV(mc, hp_dict[mcn[0]], cv, random_state=1)
+		res = tn.fit(X_train, y_train)
 
-			y_test, y_pred, y_score, df_m, df_w = self.Predict(mc, mcn[0], df, X_test, y_test)
-			acc = accuracy_score(y_test, y_pred)
-			print('acc = %d/%d = %f' % (len(y_pred)-len(df_m), len(y_pred), acc))
+		return res
 
-			t1 = time.time()
-			print('Train(%s-%s-%s) : %fs' % (mcn[0], rspn, dn, t1-t0))
-
-			return mc, df, df_m, df_w, y_test, y_pred, y_score
-
-		# tune
+	def Train(self, dn, mcn, resamp='none', verbose=True, dos_full=False):
+		if re.search('dos',  dn):
+			if dos_full: X, y, df = self.PreprocessDOSFull_(dn, onehot=self.mc_dict[mcn]['onehot'], resamp=resamp)
+			else:        X, y, df = self.PreprocessDOS_(dn, onehot=self.mc_dict[mcn]['onehot'], resamp=resamp)
+		elif re.search('peak', dn): X, y, df = self.PreprocessPeak_(dn, onehot=self.mc_dict[mcn]['onehot'], resamp=resamp)
 		else:
-			cv = StratifiedKFold(random_state=1)
-			tn = RandomizedSearchCV(mc, hp_dict[mcn[0]], cv, random_state=1)
-			res = tn.fit(X_train, y_train)
-
-			t1 = time.time()
-			print('Tune(%s-%s-%s) : %fs' % (mcn[0], rspn, dn, t1-t0))
-
-			return res
-
-	def Validate(self, d1n, d2n, mcn, rspn):
-		t0 = time.time()
-
-		mc, df1, _, _, _, _, _ = self.TrainOrTune(d1n, mcn, rspn)
-
-		df2 = pd.read_csv(d2n, index_col=0)
-		X_test, y_test = self.Preprocess(df2, mcn, rspn)
-
-		y_test, y_pred, y_score, df2_m, df2_w = self.Predict(mc, mcn, df2, X_test, y_test)
-		acc = accuracy_score(y_test, y_pred)
-		print('acc2 = %d/%d = %f' % (len(y_pred)-len(df2_m), len(y_pred), acc))
-
-		t1 = time.time()
-		print('Predict(%s-%s) : %fs' % (mcn, rspn, t1-t0))
-
-		return mc, df1, df2, df2_m, df2_w, y_test, y_pred, y_score
+			print("'%s' is wrong dn")
+			sys.exit()
+		X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, stratify=y, random_state=1)
 		
-	def DrawSpec(self, dtype, eta, JU, type, N, U):
-		eta = float(eta)
+		mc = self.mc_dict[mcn]['func']
+		mc.fit(X_train, y_train)
+		y_test, y_pred, y_score, df_test = self.Predict_(X_test, y_test, df, mc, {'d':dn, 'mc':mcn, 'rsp':resamp}, onehot=self.mc_dict[mcn]['onehot'], verbose=verbose)
+
+		return y_test, y_pred, y_score, df_test, mc
+
+	def Validate(self, d1n, d2n, mcn, resamp='none', verbose=True, dos_full=False):
+		onehot = self.mc_dict[mcn]['onehot']
+
+		# train
+		y_test1, _, _, df1_test, mc = self.Train(d1n, mcn, resamp=resamp, verbose=verbose)
+		idcs = y_test1.index
+
+		# validate
+		if re.search('dos',  d2n): 
+			if dos_full: X, y, df2 = self.PreprocessDOSFull_(d2n, onehot=onehot, resamp=resamp)
+			else:        X, y, df2 = self.PreprocessDOS_(d2n, onehot=onehot, resamp=resamp)
+		elif re.search('peak', d2n): X, y, df2 = self.PreprocessPeak_(d2n, onehot=onehot, resamp=resamp)
+		else:
+			print("'%s' is wrong dn")
+			sys.exit()
+
+		X_test = X.loc[idcs, :]
+		if onehot: y_test = y.loc[idcs]
+		else:      y_test = y[idcs]
+
+		y_test, y_pred, y_score, df2_test = self.Predict_(X_test, y_test, df2, mc, {'d':d2n, 'mc':mcn, 'rsp':resamp}, onehot=self.mc_dict[mcn]['onehot'], verbose=verbose)
+
+		return y_test, y_pred, y_score, df1_test, df2_test, mc
+
+	def Regress(self, dn, rcn, resamp='none'):
+		X, y, df = self.PreprocessMag_(dn, resamp=resamp)
+		X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=1)
+
+		rc = self.rc_dict[rcn]
+		rc.fit(X_train, y_train)
+		y_pred = rc.predict(X_test)
+		y_score = rc.score(X_test, y_test)
+
+		df_test = df.loc[y_test.index, self.params]
+		df_test['m_p'] = y_pred
+
+		return y_test, y_pred, y_score, df_test, rc
+
+	def DrawDOS(self, dn, type, JU, N, U, fermi_idx=0, point=0, ax=0):
+		dn = self.path_save + dn
+		dtype = re.sub('dos_', '', re.search('dos_[A-Za-z]+', dn).group())
+		eta = re.sub('eta', '', re.search('eta\d[.]\d+', dn).group())
+		if re.search('bins', dn): bins = int(re.sub('bins', '', re.search('bins\d+', dn).group()))
+		else                    : bins = self.BINS_MAX
+		Nclus = self.BINS_MAX // bins
+
 		JU = float(JU)
-		N = float(N)
-		U = float(U)
+		N  = float(N)
+		U  = float(U)
+		fermi_idx = int(fermi_idx)
+			
+		if   re.search('DK', dtype): pn = '%s/params_DK_eta%s.txt' % (self.path_save, eta)
+		elif re.search('DL', dtype): pn = '%s/params_DL_eta%s.txt' % (self.path_save, eta)
+		else:                        pn = '%s/params_%s.txt' % (self.path_save, dtype[0])
 
-		dir = '%s/JU%.2f_SOC%.2f/' % (self.path_output, JU, 0)
-		os.makedirs(re.sub('output', 'diagram', dir), exist_ok=True)
-		bn = [dir + f for f in os.listdir(dir) if re.search('band_%s_N%.1f_U%.1f' % (type, N, U), f)][0]
-		un = re.sub('band_', 'ufw_', bn)
+		with open(pn, 'r') as f:
+			for idx, line in enumerate(f):
+				if re.search('%d[.]\d\s+%.1f\s+%.1f\s+%.1f\s+' % (self.type_dict[type], JU, N, U), line):
+					idx += fermi_idx - 1
+					break
 
-		b = open(bn, 'r')
-		u = open(un, 'r')
-		band = np.genfromtxt(b)
-		ufw  = np.genfromtxt(u)
-		b.close()
-		u.close()
+		with h5py.File(dn, 'r') as f: d = f['dos'][()]
+		with h5py.File('%s/energy.h5' % self.path_save, 'r') as f: e = f['energy'][()]
 
+		x = d[idx][point*bins:(point+1)*bins]
+		y = [np.average(e[i*Nclus:(i+1)*Nclus]) for i in range(bins)]
+
+		if re.search('K', dtype):
+			with h5py.File(re.sub('dos', 'peak', dn), 'r') as f: p = f['peak'][()]
+			peak0 = p[idx][point*self.PEAK_MAX:(point+1)*self.PEAK_MAX]
+			peak_idx = [np.where(abs(y - peak0[i]) < 1e-6)[0] for i in range(self.PEAK_MAX)]
+			peak = [(x[i[0]], i[0]) for i in peak_idx]
+		else: peak = 0
+
+		#if not ax: fig, ax = plt.subplots(dpi=600, constrained_layout=True)
+		if ax: ax.plot(x, y, label='%s %s_eta%s/JU%.1f_N%.1f_U%.1f_fermi%d' % (type, dtype, eta, JU, N, U, fermi_idx))
+
+		return x, y, peak
+	
+	def DrawSpec(self, dn, type, JU, N, U, ax=0, show_yticks=True):
+		JU  = float(JU)
+		N   = float(N)
+		U   = float(U)
+
+		dtype = re.sub('dos_', '', re.search('dos_[A-Za-z]+', dn).group())
+		eta   = float(re.sub('eta', '', re.search('eta\d+[.]\d+', dn).group()))
+
+		path_band = '%s/JU%.2f_SOC%.2f' % (self.path_output, JU, 0)
+		os.makedirs(re.sub('output', 'diagram', path_band), exist_ok=True)
+
+		bn = ['%s/%s' % (path_band, f) for f in os.listdir(path_band) if re.search('band_%s_N%.1f_U%.1f' % (type, N, U), f)][0]
 		bn_dict = ReadFn(bn)
-		fermi = bn_dict['dntop']
-		band = band - fermi
-		e_range = np.linspace(band.min(), band.max(), 128)
+
+		with open(bn, 'r')                        as f: db = np.genfromtxt(f) - bn_dict['dntop']
+		with open(re.sub('band', 'ufw', bn), 'r') as f: du = np.genfromtxt(f)
+		with h5py.File('%s/energy.h5' % self.path_save, 'r') as f: energy= f['energy'][()]
 
 		# options
-		if   re.search('f', dtype): w_fermi = [1 if e < 0 else 0 for e in e_range]
-		elif re.search('F', dtype): w_fermi = [1 if (e < 0 and e > -1) else 0 for e in e_range]
-		else:                       w_fermi = [1 for _ in e_range]
+		if re.search('f', dtype): weight = [1 if e < 0 else -1 for e in energy]
+		else:                     weight = [1 for _ in energy]
 
-		if re.search('b', dtype): eta_brd = [0.1 + e/e_range.min() if e < 0 else 0.1 + e/e_range.max() for e in e_range]
-		else:                     eta_brd = [eta for _ in e_range]
+		if re.search('b', dtype): broad = [0.1 + abs(e / np.min(energy)) * eta for e in energy]
+		else:                     broad = [eta for _ in energy]
 
-		Z = pd.DataFrame()
-		
-		for i in range(band.shape[0]):
-			for e, wf, etab in zip(e_range, w_fermi, eta_brd):
-				spec = [i, e]
-				spec0 = 0
+		spec = []	
+		for i in range(db.shape[0]):
+			for e, w, b in zip(energy, weight, broad):
+				sum = 0
+				for j in range(db.shape[1]):
+					sum += (b / ((e - db[i][j])**2 + b**2)) * du[i][j] * w
+				spec.append([i, e, sum / np.pi])
+		spec = np.array(spec)
 
-				for j in range(band.shape[1]):
-					spec0 += (etab / ((e - band[i][j])**2 + etab**2)) * ufw[i][j] * wf
-				spec.append(spec0 / np.pi)
+		X = np.reshape(spec[:, 0], (db.shape[0], len(energy)))
+		Y = np.reshape(spec[:, 1], (db.shape[0], len(energy)))
+		Z = np.reshape(spec[:, 2], (db.shape[0], len(energy)))
 
-				data = pd.DataFrame([spec], columns=['path', 'e', 'spec'])
-				Z = pd.concat([Z, data], sort=False)
+		if not ax: fig, ax = plt.subplots(dpi=600)
 
-		X = Z['path'].values.reshape(band.shape[0], len(e_range))
-		Y = Z['e'].values.reshape(band.shape[0], len(e_range))
-		Z = Z['sp(0, 11),iec'].values.reshape(band.shape[0], len(e_range))
+		cmax = 11
+		cf = ax.contourf(X, Y, Z, levels=np.linspace(0, cmax, 100), cmap='jet')
+		#cf = ax.contourf(X, Y, Z, levels=100, cmap='jet')
 
-		fig, ax = plt.subplots(figsize=self.figsize)
-		ct = ax.contourf(X, Y, Z, levels=len(e_range), cmap='jet')
-		cb = fig.colorbar(ct)
-		#cb.set_ticks(np.arange(0, 1.1, 0.2))
-		ax.set_xticks([0, 198, 396, 677, 1023])
-		ax.set_xticklabels([r'$\Gamma$', 'X', 'M', r'$\Gamma$', 'R'])
-		ax.set_ylabel(r'$E - E_F$')
-		ax.set_title(r'$%s$-type, $N = %.1f$ $U = %.1f$ $J/U = %.1f$' % (type[0], N, U, JU), loc='left')
+		#cb = plt.colorbar(ct)
+		#cb.set_ticks([0, cmax])
+		#cb.set_label(r'$\rho_{\mathbf{k}}$', fontdict={'fontsize':'medium'}, rotation=0)
 
-		fig.tight_layout()
-		fig.savefig('%s' % re.sub('output', 'diagram', re.sub('band_', 'spec%s_' % dtype, re.sub('txt', 'png', bn))))
-		plt.show()
+		if show_yticks:
+			ax.set_ylabel(r'$E - E_F$')
+		else:
+			ax.set_yticklabels([])
+			ax.set_ylabel('')
 
-	def DrawConfMat(self, y_test, y_pred, title=''):
-		from sklearn.metrics import ConfusionMatrixDisplay
+		ax.set_xticks(self.points_g)
+		ax.set_xticklabels(self.labels_g)
+		ax.set_ylim(np.min(db)-1, 0)
+		#ax.set_title(r'%s-type $J/U = %.1f$ $N = %.1f$ $U = %.1f$' % (type[0], JU, N, U), loc='left')
 
-		fig, ax = plt.subplots(figsize=self.figsize)
-		ConfusionMatrixDisplay.from_predictions(y_test, y_pred, normalize='true', cmap='Blues', values_format='.2f', ax=ax)
-		ax.set_title(title, loc='left')
-		plt.show()
+		#fig.tight_layout()
+		#fig.savefig('%s' % re.sub('output', 'diagram', re.sub('band', 'spec_%s' % dtype, re.sub('txt', 'pdf', bn))))
+		#plt.show()
 
-	def DrawROC(self, y_test, y_pred, title=''):
-		from sklearn.preprocessing import label_binarize
-		from sklearn.metrics import roc_curve, auc
+		return cf
 
+	def annotate_heatmap_(self, im, data=None, valfmt="{x:.2f}", textcolors=("black", "white"), threshold=None, **textkw):
+		if not isinstance(data, (list, np.ndarray)):
+			data = im.get_array()
+
+		# Normalize the threshold to the images color range.
+		if threshold is not None:
+			threshold = im.norm(threshold)
+		else:
+			threshold = im.norm(data.max())/2.
+
+		# Set default alignment to center, but allow it to be
+		# overwritten by textkw.
+		kw = dict(horizontalalignment="center",
+		verticalalignment="center")
+		kw.update(textkw)
+
+		# Get the formatter in case a string is supplied
+		if isinstance(valfmt, str):
+			valfmt = matplotlib.ticker.StrMethodFormatter(valfmt)
+
+		# Loop over the data and create a `Text` for each "pixel".
+		# Change the text's color depending on the data.
+		texts = []
+		for i in range(data.shape[0]):
+			for j in range(data.shape[1]):
+				kw.update(color=textcolors[int(im.norm(data[i, j]) > threshold)])
+				text = im.axes.text(j, i, valfmt(data[i, j], None), fontsize=32, **kw)
+				texts.append(text)
+
+		return texts
+
+	def DrawConfMat(self, y_test, y_pred, ax):
+		labels = ['a', 'c', 'g']
+		mat = confusion_matrix(y_test, y_pred, labels=labels)
+		acc = [mat[i, :]/mat[i, :].sum() for i in range(3)]
+		norm = plt.Normalize(0, 1)
+
+		im = ax.imshow(acc, cmap='Blues', norm=norm)
+		self.annotate_heatmap_(im, data=mat, valfmt='{x:d}')
+
+		#ConfusionMatrixDisplay.from_predictions(y_test, y_pred, normalize='true', cmap='Blues', values_format='.3f', ax=ax, text_kw={'size':23}, colorbar=False)
+		#ConfusionMatrixDisplay.from_predictions(y_test, y_pred, cmap='Blues', ax=ax, text_kw={'size':30}, colorbar=False)
+		#xtlabels = [item.get_text().upper() for item in ax.get_xticklabels()]
+		#ytlabels = [item.get_text().upper() for item in ax.get_yticklabels()]
+
+		return im
+
+	def DrawROC(self, y_test, y_pred, ax=0):
 		y_testb = label_binarize(y_test, classes=types)
 		n_classes = y_testb.shape[1]
 
@@ -371,12 +701,11 @@ class MagStr:
 		tpr = dict()
 		roc_auc = dict()
 
-		fig, ax = plt.subplots(figsize=figsize)
+		if not ax: fig, ax = plt.subplots(dpi=600)
 
 		for i in range(n_classes):
 			fpr[i], tpr[i], _ = roc_curve(y_testb[:, i], y_score[:, i])
 			roc_auc[i] = auc(fpr[i], tpr[i])
-
 			ax.plot(fpr[i], tpr[i], label='%s (%.3f)' % (types[i], roc_auc[i]))
 
 		ax.plot([0, 1], [0, 1], 'k--')
@@ -384,258 +713,36 @@ class MagStr:
 		ax.set_ylim([0.0, 1.05])
 		ax.set_xlabel('False Positive Rate')
 		ax.set_ylabel('True Positive Rate')
-		ax.set_title(title, loc='left')
 		ax.legend(loc="lower right")
 		plt.show()
-	
-	"""
-	def Points0(self, pnum): # high symmetry points
-		points = []
-		labels = []
 
-		for point, label in self.info_path:	
-			points.append(point)
-			labels.append(label)
+	def DrawTree(self, mc, feats, ax=0):
+		if not ax: fig, ax = plt.subplots(dpi=600)
+		#tree.plot_tree(mc.estimators_[0], feature_names=feats, max_depth=4, filled = True, ax=ax, fontsize=15)
+		tree.plot_tree(mc.estimators_[0], feature_names=feats, filled = True, ax=ax, fontsize=15)
+		plt.show()
+
+	def DrawImps(self, mc, feats, ax=0):
+		importances = mc.feature_importances_
+		std = np.std([tree.feature_importances_ for tree in mc.estimators_], axis=0)
+		forest_importances = pd.Series(importances, index=feats)
+
+		if not ax: fig, ax = plt.subplots(dpi=600)
+		forest_importances.plot.bar(ax=ax)
+		plt.show()
+
+		"""	
+		fig, ax = plt.subplots(self.Nhsp, 1, sharey=True, figsize=figsize, dpi=600)
+		for i in range(self.Nhsp):
+			imp_s = forest_importances[bins*i:bins*(i+1)]
+			std_s = std[bins*i:bins*(i+1)]
+			#imp_s.plot.bar(yerr=std_s, ax=ax[i])
+			imp_s.plot.bar(ax=ax[i])
+
+			ax[i].set_title("%s" % self.labels[i])
+			#ax.set_title("Feature importances using MDI")
+			#ax.set_ylabel("Mean decrease in impurity")
+		fig.tight_layout()
+		"""
+		plt.show()
 
-		return points, labels
-
-	def Points1(self, pnum): # hsp + around hsp
-		points = []
-		labels = []
-		hnum = -(pnum // 2)
-
-		for point, label in self.info_path:	
-			for i in range(pnum + 1):
-				points.append(point + hnum + i)
-				labels.append(label + str(hnum + i))
-
-		for _ in range(-hnum):
-			points = np.delete(points,  0)
-			points = np.delete(points, -1)
-			labels = np.delete(labels,  0)
-			labels = np.delete(labels, -1)
-
-		return points, labels
-
-	def Points2(self, pnum): # hsp + between hsp
-		labels = []
-		hnum = -(pnum // 2)
-
-		ps = []
-		for p, label in self.info_path:
-			ps.append(p)
-			for i in range(pnum + 1):
-				labels.append(label + str(hnum + i))
-
-		itvs = [np.linspace(ps[i], ps[i+1], pnum+2, dtype=int) for i in range(len(ps)-1)]
-
-		points = [itv[:-1] for itv in itvs]
-		points = list(np.ravel(points))
-		points.append(ps[-1])
-
-		for _ in range(-hnum):
-			labels = np.delete(labels,  0)
-			labels = np.delete(labels, -1)
-
-		return points, labels
-
-	def OpenBand(self, dtype, eta):
-		dt = dtype.split(sep='-') # dtype = 'dtype-ptype-pnum'
-		dn = '%s/magstr/dos_dt%s_eta%.3f.csv' % (self.path_output, dtype, eta)
-
-		df = pd.read_csv('%s/magstr/band_pt%s_pn%s.csv' % (self.path_output, dt[1], dt[2]), index_col=0)
-		df = df[df['U'] > self.tol_U]
-
-		e_label = [v for v in df.columns if re.match('e', v)]
-		w_label = [re.sub('e', 'w', v) for v in e_label]
-
-		for e in e_label: df[e] = df[e] - df['dntop']
-		df = df.reset_index(drop=True)
-
-		e = df.loc[:, e_label].values.flatten()
-		e_range = np.linspace(min(e), max(e), self.max_bins)
-
-		return df, dn, e_range, e_label, w_label
-
-	def GenDOS1(self, dtype, eta): # partial dos
-		df0, dn, e_range, e_label, w_label = self.OpenBand(dtype, eta)
-
-		f_label = ['x%d' % i for i in range(self.max_bins)]
-		x_label = self.params + f_label
-
-		df = pd.DataFrame()
-
-		for i in df0.index:
-			dos = list(df0.loc[i, self.params])
-
-			for e in e_range:
-				dos0 = 0
-				for el, wl in zip(e_label, w_label):
-					dos0 += (eta / ((e - df0.loc[i, el])**2 + eta**2)) * df0.loc[i, wl]
-				dos.append(dos0 / np.pi)
-
-			data = pd.DataFrame([dos], index=[i], columns=x_label)
-			df = pd.concat([df, data], sort=False)
-
-		return df, dn
-
-	def GenDOS2(self, dtype, eta): # hsp dos
-		df0, dn, e_range, e_label, w_label = self.OpenBand(dtype, eta)
-
-		# options
-		if   re.search('f', dtype): w_fermi = [1 if e < 0 else 0 for e in e_range]
-		elif re.search('F', dtype): w_fermi = [1 if (e < 0 and e > -1) else 0 for e in e_range]
-		else:                       w_fermi = [1 for _ in e_range]
-
-		if re.search('b', dtype): eta_brd = [0.1 + e/e_range.min() if e < 0 else 0.1 + e/e_range.max() for e in e_range]
-		else:                     eta_brd = [eta for _ in e_range]
-
-		n_hsp = len(e_label) // self.Nbs
-
-		p_label = []
-		f_label = []
-		e_label_sp = [[] for _ in range(n_hsp)]
-		w_label_sp = [[] for _ in range(n_hsp)]
-
-		for i in range(n_hsp):
-			p_label.append(re.sub('e', '', e_label[self.Nbs*i].split('_')[0]))
-			for j in range(self.max_bins):
-				f_label.append('%s_%d' % (p_label[i], j))
-			for j in range(self.Nbs):
-				e_label_sp[i].append(e_label[self.Nbs*i + j])
-				w_label_sp[i].append(w_label[self.Nbs*i + j])
-		x_label = self.params + f_label
-
-		df = pd.DataFrame()
-
-		for i in df0.index:
-			dos = list(df0.loc[i, self.params])
-
-			for hsp in range(n_hsp):
-				for e, wf, etab in zip(e_range, w_fermi, eta_brd):
-					dos0 = 0
-					for el, wl in zip(e_label_sp[hsp], w_label_sp[hsp]):
-						dos0 += (etab / ((e - df0.loc[i, el])**2 + etab**2)) * df0.loc[i, wl] * wf
-					dos.append(dos0 / np.pi)
-
-			data = pd.DataFrame([dos], index=[i], columns=x_label)
-			df = pd.concat([df, data], sort=False)
-
-		return df, dn
-	
-	def GenDOS3(self, dtype, eta): # full dos
-		df0, dn, e_range, e_label, w_label = self.OpenBand(dtype, eta)
-
-		f_label = ['x%d' % i for i in range(self.max_bins)]
-		x_label = self.params + f_label
-
-		df = pd.DataFrame()
-
-		dir_list = [self.path_output + dir for dir in os.listdir(self.path_output) if not re.search('magstr', dir)]	
-
-		for dir in dir_list:
-			fn_list = [dir +'/'+ fn for fn in os.listdir(dir) if re.match('dos', fn)]
-			gi_list = GenGroundIdx(fn_list, dtype='dos', exclude_f=True)
-
-			for fn in [fn_list[i] for i in gi_list]:
-				fn_dict = ReadFn(fn, dtype='dos')
-				fn_dict['type'] = fn_dict['type'][0]
-
-				dos = []
-				for p in self.params: dos.append(fn_dict[p])
-
-				if fn_dict['U'] > self.tol_U and fn_dict['m'] > tol:
-					f = open(fn, 'r')
-					d = np.genfromtxt(f)
-					f.close()
-
-					d = np.transpose(d)
-					d = pd.DataFrame(d[1:, :], columns=d[0, :]).sum()
-					x = [e - fn_dict['dntop'] for e in d.index]
-
-					dos += list(np.interp(e_range, d.index, d))
-
-					data = pd.DataFrame([dos], columns=x_label)
-					df = pd.concat([df, data], sort=False)
-
-		return df, dn
-
-	def GenDOS4(self, dtype, eta): # DMFT dos
-		df0, dn, e_range, e_label, w_label = self.OpenBand(dtype, eta)
-
-		path_spec = '/home/Shared/BaOsO3/dmft_spec/'
-		dir_list = [path_spec + dir for dir in os.listdir(path_spec)\
-				if (re.match('oDir', dir)\
-				and float(re.sub('AF', '', re.search('AF\d', dir).group())) > 0\
-				and float(re.sub('_D', '', re.search('_D\d+[.]\d+', dir).group())) < 0.1\
-				and len(os.listdir(path_spec + dir)) > 1)]
-
-		n_hsp = len(e_label) // self.Nbs
-
-		p_label = []
-		f_label = []
-		e_label_sp = [[] for _ in range(n_hsp)]
-		w_label_sp = [[] for _ in range(n_hsp)]
-
-		for i in range(n_hsp):
-			p_label.append(re.sub('e', '', e_label[self.Nbs*i].split('_')[0]))
-			for j in range(self.max_bins):
-				f_label.append('%s_%d' % (p_label[i], j))
-			for j in range(self.Nbs):
-				e_label_sp[i].append(e_label[self.Nbs*i + j])
-				w_label_sp[i].append(w_label[self.Nbs*i + j])
-		x_label = self.params + f_label
-
-		df = pd.DataFrame()
-
-		for dir in dir_list:
-			dir_lat = dir + '/lattice/vdx/'
-			G_list = [dir_lat +'/'+ fn for fn in os.listdir(dir_lat) if re.search('_kG.*_ep%.2f' % eta, fn)]
-
-			mag_dat = open(dir + '/result/%s/mag.dat' % os.listdir(dir + '/result/')[0], 'r')
-			m = np.genfromtxt(mag_dat)[-1, 2] * 2
-			mag_dat.close()
-
-			for G in G_list:
-				fn_list = [re.sub('_kG', '_k%s' % p, G) for p in p_label]
-				fn_dict = ReadFnDMFT(G)
-
-				dos = []
-				for p in self.params: dos.append(fn_dict[p])
-
-				for fn in fn_list:
-					f = open(fn, 'r')
-					d = np.genfromtxt(f)[:, :2]
-					f.close()
-
-					itp = interpolate.interp1d(d[:, 0], d[:, 1] * 6, kind='cubic', fill_value='extrapolate')
-					dos += list(itp(e_range))
-
-				data = pd.DataFrame([dos], columns=x_label)
-				data['m'] = m
-				df = pd.concat([df, data], sort=False)
-
-			df = df.replace({'0':'f', '1':'a', '2':'c', '3':'g'})
-
-		return df, dn
-
-	def GenDOS(self, dtype, eta):
-		t0 = time.time() 
-
-		eta = float(eta)
-		d_dict = {
-			'1': self.GenDOS1,
-			'2': self.GenDOS2,
-			'3': self.GenDOS3,
-			'4': self.GenDOS4,
-			'5': self.GenDOS5,
-		}
-
-		df, dn = d_dict[dtype[0]](dtype, eta)
-
-		df = df.reset_index(drop=True)
-		df.to_csv(dn, sep=',')
-
-		t1 = time.time()
-		print('GenDOS(%s) : %fs' % (dn, t1-t0))
-	"""

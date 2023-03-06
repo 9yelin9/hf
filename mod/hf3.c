@@ -2,17 +2,19 @@
 
 #include "hf3.h" 
 
-void Init0(double *m)  {m[0] = 1.0; m[1] = 0.1; m[2] = 0.1;}
-void Init1(double *m)  {m[0] = 0.1; m[1] = 1.0; m[2] = 0.1;}
-void Init2(double *m)  {m[0] = 0.1; m[1] = 0.1; m[2] = 1.0;}
+// one magnetized orbital
+void Init1(double *m) {m[0] = 1.0; m[1] = 0.1; m[2] = 0.1;}
+void Init2(double *m) {m[0] = 0.1; m[1] = 1.0; m[2] = 0.1;}
+void Init3(double *m) {m[0] = 0.1; m[1] = 0.1; m[2] = 1.0;}
 
-void Init01(double *m) {m[0] = 1.0; m[1] = 1.0; m[2] = 0.1;}
-void Init02(double *m) {m[0] = 1.0; m[1] = 0.1; m[2] = 1.0;}
-void Init12(double *m) {m[0] = 0.1; m[1] = 1.0; m[2] = 1.0;}
+// two magnetized orbitals
+void Init4(double *m) {m[0] = 1.0; m[1] = 1.0; m[2] = 0.1;}
+void Init5(double *m) {m[0] = 1.0; m[1] = 0.1; m[2] = 1.0;}
+void Init6(double *m) {m[0] = 0.1; m[1] = 1.0; m[2] = 1.0;}
 
 int main(int argc, char *argv[]) {
 	if(argc < 2) {
-		printf("%s <name> <J/U> <SOC> <type> <N> <U> <save> : make Hartree-Fock approximated 3-band Hubbard model\n", argv[0]);
+		printf("%s <name> <save> <J/U> <SOC> <type> <N> <U> : make Hartree-Fock approximated 3-band Hubbard model\n", argv[0]);
 		exit(1);
 	}
 	omp_set_num_threads(1);
@@ -22,16 +24,16 @@ int main(int argc, char *argv[]) {
 
 	Cell c = {
 		.name = argv[1],
-		.type = argv[4],
-		.save = argv[7],
+		.save = argv[2],
+		.type = argv[5],
 	};
 	ReadCell(&c);
 
 	Solution s = {
-		.JU = atof(argv[2]),
-		.SOC = atof(argv[3]),
-		.N = atof(argv[5]),
-		.U = atof(argv[6]),
+		.JU = atof(argv[3]),
+		.SOC = atof(argv[4]),
+		.N = atof(argv[6]),
+		.U = atof(argv[7]),
 		.J = s.JU * s.U,
 
 		.n = (double*)malloc(sizeof(double) * c.Nc),
@@ -51,28 +53,12 @@ int main(int argc, char *argv[]) {
 		s.m[i] = 0.1;
 	}
 
-	if(strstr(c.sys, "sc")) {
-		if     (strstr(c.type, "a1")) Init1(s.m);
-		else if(strstr(c.type, "a2")) Init02(s.m);
-
-		else if(strstr(c.type, "c1")) Init0(s.m);
-		else if(strstr(c.type, "c2")) Init12(s.m);
-	}
-	if(strstr(c.sys, "fcc")) {
-		if     (strstr(c.type, "f1")) Init0(s.m);
-		else if(strstr(c.type, "f2")) Init1(s.m);
-		else if(strstr(c.type, "f3")) Init2(s.m);
-		else if(strstr(c.type, "f4")) Init01(s.m);
-		else if(strstr(c.type, "f5")) Init02(s.m);
-		else if(strstr(c.type, "f6")) Init12(s.m);
-
-		else if(strstr(c.type, "a1")) Init0(s.m);
-		else if(strstr(c.type, "a2")) Init1(s.m);
-		else if(strstr(c.type, "a3")) Init2(s.m);
-		else if(strstr(c.type, "a4")) Init01(s.m);
-		else if(strstr(c.type, "a5")) Init02(s.m);
-		else if(strstr(c.type, "a6")) Init12(s.m);
-	}
+	if     (strstr(c.type, "1")) Init1(s.m);
+	else if(strstr(c.type, "2")) Init2(s.m);
+	else if(strstr(c.type, "3")) Init3(s.m);
+	else if(strstr(c.type, "4")) Init4(s.m);
+	else if(strstr(c.type, "5")) Init5(s.m);
+	else if(strstr(c.type, "6")) Init6(s.m);
 
 	char dir[1024];
 	sprintf(dir, "output/%s/JU%.2f_SOC%.2f", c.save, s.JU, s.SOC);
@@ -109,7 +95,15 @@ int main(int argc, char *argv[]) {
 	// run
 	CalcSolution(c, &s, &lp, System, Interaction, Basis);
 	MakeBand(c, &s, &lp, Interaction, Basis);
+
+	c.eta = 0.1;
 	MakeDOS(c, &s, &lp, Interaction, Basis);
+	/*
+	for(i=1; i<6; i++) {
+		c.eta = 0.1 * i;
+		MakeDOS(c, &s, &lp, Interaction, Basis);
+	}
+	*/
 
 	free(s.n);
 	free(s.m);

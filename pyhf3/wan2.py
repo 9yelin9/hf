@@ -1,13 +1,15 @@
 # pyhf3/wan2.py : convert wannier90 data to something.txt
 
+import os
 import re
 import numpy as np
 import pandas as pd
 
+from .read import ReadInfo
+
 class Wan2:
-	def __init__(self, path_input):
-		self.path_input = path_input
-		dim = 3
+	def __init__(self, name):
+		self.path_input, _, _, _ = ReadInfo(name)
 
 	def Wan2Lat(self):
 		f_wan = open('%s/wannier90_hr.dat' % self.path_input, 'r')
@@ -45,7 +47,7 @@ class Wan2:
 			if re.search('num_wann', line):
 				f_info.write(line + '\n')
 				break
-
+			
 		# a
 		f_info.write('begin a\n')
 		for i in range(dim):

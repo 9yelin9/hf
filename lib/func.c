@@ -2,6 +2,49 @@
 
 #include "hf3.h" 
 
+void DoNothing() {}
+
+void GetDimsH5(char *fn, char *dn, hsize_t *dims) {
+	hid_t f, f_dset, f_size;
+
+	f      = H5Fopen(fn, H5F_ACC_RDONLY, H5P_DEFAULT); 
+	f_dset = H5Dopen(f, dn, H5P_DEFAULT);
+	f_size = H5Dget_space(f_dset);
+
+	H5Sget_simple_extent_dims(f_size, dims, NULL);
+
+	H5Fclose(f);
+	H5Dclose(f_dset);
+	H5Sclose(f_size);
+}
+
+void ReadH5(char *fn, char *dn, double *val) {
+	hid_t f, f_dset;
+
+	f      = H5Fopen(fn, H5F_ACC_RDONLY, H5P_DEFAULT); 
+	f_dset = H5Dopen(f, dn, H5P_DEFAULT);
+
+	H5Dread(f_dset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, val);
+
+	H5Fclose(f);
+	H5Dclose(f_dset);
+}
+
+void WriteH5(char *fn, char *dn, int dim, hsize_t *dims, double *val) {
+	hid_t f, f_size, f_dset;
+
+	f      = H5Fcreate(fn, H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
+	f_size = H5Screate_simple(dim, dims, NULL);
+	f_dset = H5Dcreate(f, dn, H5T_NATIVE_DOUBLE, f_size, H5P_DEFAULT, H5P_DEFAULT, H5P_DEFAULT);
+
+	H5Dwrite(f_dset, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT, val);
+
+	H5Fclose(f);
+	H5Sclose(f_size);
+	H5Dclose(f_dset);
+}
+
+
 FILE* OpenFile(char *fn, char *mode) {
 	FILE *f;
 
@@ -312,6 +355,10 @@ void DataName(Cell c, Solution *s, char *dtype, char *dn) {
 		sprintf(dn, "output/%s/JU%.2f_SOC%.2f/%s_%s_N%.1f_U%.1f_%s.txt",\
 				c.save, s->JU, s->SOC, dtype, c.type, s->N, s->U, s->runtime);
 	}
+	if(strstr(dtype, "dos")) {
+		sprintf(dn, "output/%s/JU%.2f_SOC%.2f/%s_%s_eta%.2f_N%.1f_U%.1f_n%.16f_m%.16f_e%.16f_gap%.16f_fermi%.16f_dntop%.16f_%s.txt",\
+				c.save, s->JU, s->SOC, dtype, c.type, c.eta, s->N, s->U, s->ns, s->ms, s->e, s->gap, s->fermi, s->dntop, s->runtime);
+	}
 	else {
 		sprintf(dn, "output/%s/JU%.2f_SOC%.2f/%s_%s_N%.1f_U%.1f_n%.16f_m%.16f_e%.16f_gap%.16f_fermi%.16f_dntop%.16f_%s.txt",\
 				c.save, s->JU, s->SOC, dtype, c.type, s->N, s->U, s->ns, s->ms, s->e, s->gap, s->fermi, s->dntop, s->runtime);
@@ -348,7 +395,7 @@ void CalcEigen(Cell c, Solution *s, LAPACK *lp, int Nk, lapack_complex_double *t
 void CalcGap(Cell c, Solution *s, double *ev, lapack_complex_double *es) {
 	int i, j;
 	char wgn[64];
-	double wg[Nkg], uplow = 100, dntop = -100, e = 0, tol = 1e-5;
+	double wg[Nkg], uplow = 100, dntop = -100, e = 0, tol = 1e-6;
 
 	sprintf(wgn, "input/%s/wg.bin", c.name);
 	ReadBin(wgn, sizeof(double) * Nkg, wg);
@@ -425,7 +472,7 @@ void InteractionS(Cell c, Solution *s, lapack_complex_double *tb0) {
 	for(i=0; i<c.Nbb; i+=c.Nb+1) tb0[i] += INTER_N;
 
 	for(i=0;             i<c.Nb*c.Ns; i+=c.Nb+1) tb0[i] -= INTER_M * pow(-1, i / (c.Nb*c.Nc));
-	for(i=(c.Nb+1)*c.Ns; i<c.Nbb;     i+=c.Nb+1) tb0[i] += INTER_M * pow(-1, (i + c.Nb*c.Ns)/ (c.Nb*c.Nc)) ;
+	for(i=(c.Nb+1)*c.Ns; i<c.Nbb;     i+=c.Nb+1) tb0[i] += INTER_M * pow(-1, (i + c.Nb*c.Ns) / (c.Nb*c.Nc)) ;
 }
 
 void InteractionQ(Cell c, Solution *s, lapack_complex_double *tb0) {
@@ -675,8 +722,7 @@ void MakeUFW(Cell c, Solution *s, double *ev, lapack_complex_double *es, void (*
 	printf("%s(%s) : %lds\n", __func__, fn, t1 - t0);
 }
 
-#define ETA 0.1
-#define GREEN(i) (ETA / (pow(e - ev[i], 2) + pow(ETA, 2))) 
+#define GREEN(i) (c.eta / (pow(e - ev[i] + s->fermi, 2) + pow(c.eta, 2))) 
 
 void MakeDOS(Cell c, Solution *s, LAPACK *lp, void (*Interaction)(), void (*Basis)()) {
 	FILE *f;
@@ -687,9 +733,9 @@ void MakeDOS(Cell c, Solution *s, LAPACK *lp, void (*Interaction)(), void (*Basi
 
 	time_t t0 = time(NULL);
 
-	int itv = 128, v, i, j;
+	int itv, v, i, j;
 	char cfgn[64], tbgn[64];
-	double ev[c.Nb * Nkg], e, dos[c.Nb], vol = pow(2*M_PI, 3) * pow(2*M_PI, 3) * M_PI; 
+	double ev[c.Nb * Nkg], dos[c.Nb], e, emin, emax, vol = pow(2*M_PI, 3) * pow(2*M_PI, 3) * M_PI; 
 	Energy energy;
 	lapack_complex_double cfg[c.Ni * Nkg], tbg[c.Nbb * Nkg], es[c.Nbb * Nkg];
 	
@@ -701,16 +747,17 @@ void MakeDOS(Cell c, Solution *s, LAPACK *lp, void (*Interaction)(), void (*Basi
 	CalcEigen(c, s, lp, Nkg, tbg, ev, es, &energy, Interaction);
 	Basis(c, Nkg, cfg, es);
 
-	energy.min -= 2.0;
-	energy.max += 2.0;
-	
+	itv = 255;
+	emin = -16;
+	emax =  16;
+
 	fprintf(f, "%22s", "#e");
 	for(i=0; i<c.Nb; i++) fprintf(f, "%20s%02d", "d", i+1);
 	fprintf(f, "\n");
 
-	for(v=0; v<itv; v++) {
+	for(v=0; v<=itv; v++) {
 		memset(dos, 0, sizeof(dos));
-		e = energy.min + (energy.max - energy.min) * v / itv;
+		e = emin + (emax - emin) * v / itv;
 
 		for(i=0; i<c.Nb*Nkg; i++) {
 			for(j=0; j<c.Nb; j++) dos[j] += GREEN(i) * CSQR(es[c.Nb*i + j]);

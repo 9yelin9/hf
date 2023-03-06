@@ -11,7 +11,6 @@ t0=$(date +%s.%N)
 t0_string=$(date)
 
 ./mod/init cual2o4 f 1 
-SAVE="cual2o4"
 ./mod/init cual2o4 a 1
 
 t1=$(date +%s.%N)
