@@ -1,12 +1,12 @@
 # hf3/hf3.py : make input and output of hf3 model
 
 import os
-os.environ['OMP_NUM_THREADS'] = '4'
-os.environ['OPENBLAS_NUM_THREADS'] = '4'
+num_thread = 4
+os.environ['OMP_NUM_THREADS'] = str(num_thread)
+os.environ['OPENBLAS_NUM_THREADS'] = str(num_thread)
 
 import re
 import sys
-import scipy
 import argparse
 import numpy as np
 import pandas as pd
@@ -15,25 +15,33 @@ import matplotlib.pyplot as plt
 from pyhf3.read import ReadInfo
 
 parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter)
-parser.add_argument('-n',  '--name', type=str, default='baoso3_dU1.0', help='<name of material>')
-parser.add_argument('-w2', '--wan2',   nargs='+', default=None, help='l                                         : Wan2Lat\n'\
-																	+'sl                                        : Lat2SLat\n'\
-																	+'i  <ltype> <dim>                          : Wan2Info\n'\
-																	+'p  <pmax> <dim>                           : Info2Path')
-parser.add_argument('-dr', '--draw',   nargs='+', default=None, help='b  <J/U> <SOC> <type> <N> <U>             : DrawBandDOS\n'\
-																	+'bu <J/U> <SOC> <type> <N> <U>             : DrawBandDOS(unfold)\n'\
-																	+'bt <J/U> <SOC> <type>                     : DrawBandTB\n'\
-																	+'bc <J/U> <SOC> <type>                     : DrawBandCheck\n'\
-																	+'p  <J/U> <SOC> <type> <tol_gap> <tol_m>   : DrawPhase\n'\
-																	+'pc <J/U> <SOC> <type1> <type2>            : DrawPhaseCheck\n'\
-																	+'s  <J/U> <SOC> <type> <N> <U>             : DrawSolution\n')
-parser.add_argument('-ms', '--magstr', nargs='+', default=None, help='e                                         : GenEnergy\n'\
-																	+'b  <btype>                                : GenBand\n'\
-																	+'dk <btype> <eta>                          : GenDOSK\n'\
-																	+'dl <btype> <eta>                          : GenDOSL\n'\
-																	+'dd <dtype> <eta>                          : GenDOSD\n'\
-																	+'p  <dtype> <eta> <bins>                   : GenPeak\n')
-parser.add_argument('-mcn', '--mcname', type=str, default=None)
+parser.add_argument('-n', '--name', type=str, default='baoso3_dU1.0', help='<(HF3)material/(DMFT)directory>')
+parser.add_argument('-i', '--imp', nargs='+', type=int, default=range(8), help='<(DMFT)impurities>')
+parser.add_argument('-w2',     '--wan2', nargs='+', default=None, help='l                                         : Wan2Lat\n'\
+							 										  +'sl                                        : Lat2SLat\n'\
+																	  +'i  <ltype> <dim>                          : Wan2Info\n'\
+																	  +'p  <pmax> <dim>                           : Info2Path')
+parser.add_argument('-dr',     '--draw', nargs='+', default=None, help='b  <J/U> <SOC> <type> <N> <U>             : DrawBandDOS\n'\
+																	  +'bu <J/U> <SOC> <type> <N> <U>             : DrawBandDOS(unfold)\n'\
+																	  +'bt <J/U> <SOC> <type>                     : DrawBandTB\n'\
+																 	  +'bc <J/U> <SOC> <type>                     : DrawBandCheck\n'\
+																 	  +'p  <J/U> <SOC> <type> <tol_gap> <tol_m>   : DrawPhase\n'\
+																 	  +'pc <J/U> <SOC> <type1> <type2>            : DrawPhaseCheck\n'\
+																	  +'s  <J/U> <SOC> <type> <N> <U>             : DrawSolution\n')
+parser.add_argument('-mst',  '--magstr', nargs='+', default=None, help='e                                         : GenEnergy\n'\
+																	  +'b  <btype>                                : GenBand\n'\
+																	  +'dk <btype> <eta>                          : GenDOSK\n'\
+																	  +'dl <btype> <eta>                          : GenDOSL\n'\
+																	  +'dd <dtype> <eta>                          : GenDOSD\n'\
+																	  +'p  <dtype> <eta> <bins>                   : GenPeak\n')
+parser.add_argument('-msp', '--magspec', nargs='+', default=None, help='e                                         : GenEnergy\n'\
+																	  +'f  <dtype>                                : GenFileList\n')
+parser.add_argument('-mft', '--magfeat', nargs='+', default=None, help='e                                         : GenEnergy\n'\
+																	  +'l  <dtype>                                : GenList\n')
+parser.add_argument('-dm',    '--dmftt', nargs='+', default=None, help='pp <AF> <U> <J> <Hz> <dtype> <cnt>        : PrintParams\n'\
+																	  +'pm <AF> <U> <J> <Hz> <dtype> <cnt>        : PrintMag\n'\
+																	  +'sp <AF> <U> <J> <Hz> <dtype> <cnt>        : ShowParams\n'\
+																	  +'sn <AF> <U> <J> <Hz> <dtype> <cnt>        : ShowNext\n')
 args = parser.parse_args()                                                                     
 
 # wan2
@@ -50,15 +58,15 @@ if args.wan2:
 # draw
 if args.draw:
 	from pyhf3 import draw
-	dr = draw.Draw(args.name, args.draw[1], args.draw[2])
+	dr = draw.Draw(args.name, *args.draw[1:3])
 
-	if   args.draw[0] == 'b':  dr.DrawBandDOS(args.draw[3], args.draw[4], args.draw[5])
-	elif args.draw[0] == 'bu': dr.DrawBandDOS(args.draw[3], args.draw[4], args.draw[5], 1)
+	if   args.draw[0] == 'b':  dr.DrawBandDOS(*args.draw[3:])
+	elif args.draw[0] == 'bu': dr.DrawBandDOS(*args.draw[3:], 1)
 	elif args.draw[0] == 'bt': dr.DrawBandTB(args.draw[3])
 	elif args.draw[0] == 'bc': dr.DrawBandCheck(args.draw[3])
 	elif args.draw[0] == 'p':  dr.DrawPhase(args.draw[3])
-	elif args.draw[0] == 'pc': dr.DrawPhaseCheck(args.draw[3], args.draw[4])
-	elif args.draw[0] == 's':  dr.DrawSolution(args.draw[3], args.draw[4], args.draw[5])
+	elif args.draw[0] == 'pc': dr.DrawPhaseCheck(*args.draw[3:])
+	elif args.draw[0] == 's':  dr.DrawSolution(*args.draw[3:])
 	sys.exit()
 
 # magstr
@@ -68,27 +76,39 @@ if args.magstr:
 
 	if   args.magstr[0] == 'e':  ms.GenEnergy()
 	elif args.magstr[0] == 'b':  ms.GenBand(args.magstr[1])
-	elif args.magstr[0] == 'dk': os.system('./mod/dos %s d %sK %s' % (args.name, args.magstr[1], args.magstr[2]))
-	elif args.magstr[0] == 'dl': ms.GenDOSL(args.magstr[1], args.magstr[2])
-	elif args.magstr[0] == 'dd': ms.GenDOSD(args.magstr[1], args.magstr[2])
-	elif args.magstr[0] == 'p':  os.system('./mod/dos %s p %s %s %s' % (args.name, args.magstr[1], args.magstr[2], args.magstr[3]))
+	elif args.magstr[0] == 'dl': ms.GenDOSL(*args.magstr[1:])
+	elif args.magstr[0] == 'dd': ms.GenDOSD(*args.magstr[1:])
 	sys.exit()
 
-###############################################################################################################################################
+# magspec
+if args.magspec:
+	from pyhf3 import magspec
+	mp = magspec.MagSpec(name=args.name)
 
-from pyhf3 import magstr
-from sklearn.metrics import accuracy_score
-ms = magstr.MagStr(args.name, num_thread=8)
+	if   args.magspec[0] == 'e': mp.GenEnergy()
+	elif args.magspec[0] == 'f': mp.GenFileList(args.magspec[1])
+	sys.exit()
 
-#for mcn in ['rf', 'xgb', 'lgb', 'cat']:
-mcn = args.mcname
-for eta in np.arange(0.1, 0.3, 0.0001):
-	d1n = 'dos_dt1_eta%.4f.h5' % eta
-	d2n = 'dos_dt0_eta0.1000.h5'
-	y_test, y_pred, _, _, df2_test, _ = ms.Validate(d1n, d2n, mcn, resamp='none', verbose=False)
+# magfeat
+if args.magfeat:
+	from pyhf3 import magfeat
+	mf = magfeat.MagFeat(name=args.name)
 
-	acc = accuracy_score(y_test, y_pred)
-	if acc > 0.5:
-		print('\n-------------------- %s | %s | %s --------------------' % (mcn, d1n, d2n))
-		y_test, y_pred, _, _, df2_test, _ = ms.Validate(d1n, d2n, mcn, resamp='none', verbose=True)
-		print(df2_test)
+	if   args.magfeat[0] == 'e': mf.GenEnergy()
+	elif args.magfeat[0] == 'l': mf.GenList(args.magfeat[1])
+	sys.exit()
+
+# dmftt
+if args.dmftt:
+	from pyhf3 import dmftt
+	dm = dmftt.DMFTT(*args.dmftt[1:5], dmft_dir=args.name)
+
+	if   args.dmftt[0] == 'pp': dm.PrintParams(*args.dmftt[5:], args.imp)
+	elif args.dmftt[0] == 'pm': dm.PrintMag(*args.dmftt[5:], args.imp)
+	elif args.dmftt[0] == 'sp': dm.ShowParams(*args.dmftt[5:], args.imp)
+	#elif args.dmftt[0] == 'sm': dm.ShowMag(*args.dmftt[5:], args.imp)
+	elif args.dmftt[0] == 'sn': dm.ShowNext(args.imp)
+	sys.exit()
+
+###
+
