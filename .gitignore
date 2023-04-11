@@ -1,9 +1,5 @@
+output/
+diagram/
+
 dmft/
 dmft_old/
-diagram/
-output/
-log/
-*.bin
-*.txt
-*.csv
-*.dat

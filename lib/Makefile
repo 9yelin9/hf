@@ -16,12 +16,10 @@ LIBS = libhf.a
 	$(CC) $(CFLAGS) -c $<
 
 all : $(LIBS)
+clean :
+	$(RM) *.o
+dep :
+	$(CC) $(CFLAGS) -M $(OBJS:.o=.c) 
 
 $(LIBS) : $(OBJS)
 	$(AR) $@ $(OBJS)
-
-clean :
-	$(RM) *.o
-
-dep :
-	$(CC) $(CFLAGS) -M $(OBJS:.o=.c) 
