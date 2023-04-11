@@ -10,8 +10,8 @@ CFLAGS = -g -O2 -Wall -mcmodel=medium -I../include -I$(USR_DIR)/include -I$(OMP_
 LDFLAGS = -L../lib -L$(USR_DIR)/lib -L$(OMP_DIR)/lib -L$(HDF_DIR)/lib -fopenmp 
 #LINKS = -lhf -lz -lm -lopenblas -lgsl -lgslcblas -lhdf5
 LINKS = -lhf -lz -lm -lopenblas -lhdf5
-OBJS = hf.o tb.o
-TARGETS = hf tb
+OBJS = tb.o hf.o
+TARGETS = tb hf
 
 .PHONY: all clean dep
 .SUFFIXES : .c .o
@@ -26,6 +26,7 @@ clean :
 dep :
 	$(CC) $(CFLAGS) -M $(OBJS:.o=.c) 
 
-$(TARGETS) : $(OBJS)
-	$(CC) $(LDLIBS) $(LDFLAGS) -o $@ $(OBJS) $(LINKS)
-
+tb : tb.o
+	$(CC) $(LDLIBS) $(LDFLAGS) -o $@ tb.o $(LINKS)
+hf : hf.o
+	$(CC) $(LDLIBS) $(LDFLAGS) -o $@ hf.o $(LINKS)

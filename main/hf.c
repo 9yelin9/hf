@@ -41,8 +41,8 @@ int main(int argc, char *argv[]) {
 		.U    = atof(argv[6]),
 		.J    = s.JU * s.U,
 
-		.n     = (double*)malloc(sizeof(double) * c.Nc),
-		.m     = (double*)malloc(sizeof(double) * c.Nc),
+		.n     = calloc(sizeof(*s.n), c.Nc),
+		.m     = calloc(sizeof(*s.m), c.Nc),
 		.ns    = 100,
 		.ms    = 100,
 		.fermi = 100,
@@ -58,34 +58,37 @@ int main(int argc, char *argv[]) {
 	s.save = save;
 
 	InitSolution(c, &s);
-	if     (strstr(s.type, "1")) Init1(s.m);
-	else if(strstr(s.type, "2")) Init2(s.m);
-	else if(strstr(s.type, "3")) Init3(s.m);
-	else if(strstr(s.type, "4")) Init4(s.m);
-	else if(strstr(s.type, "5")) Init5(s.m);
-	else if(strstr(s.type, "6")) Init6(s.m);
+	if     (strstr(c.type, "1")) Init1(s.m);
+	else if(strstr(c.type, "2")) Init2(s.m);
+	else if(strstr(c.type, "3")) Init3(s.m);
+	else if(strstr(c.type, "4")) Init4(s.m);
+	else if(strstr(c.type, "5")) Init5(s.m);
+	else if(strstr(c.type, "6")) Init6(s.m);
 
 	void (*Symmetry)(double*, double*);
-	if     (strstr(s.type, "A")) Symmetry = SymmetryA;
-	else if(strstr(s.type, "C")) Symmetry = SymmetryC;
-	else if(strstr(s.type, "G")) Symmetry = SymmetryG;
+	if     (strstr(c.type, "A")) Symmetry = SymmetryA;
+	else if(strstr(c.type, "C")) Symmetry = SymmetryC;
+	else if(strstr(c.type, "G")) Symmetry = SymmetryG;
 	else                         Symmetry = SymmetryN;
 
+	int i, is_Q = 0;
+	for(i=0; i<DIM; i++) if(c.Q[i]) is_Q = 1;
+
 	void (*Interaction)(Config, Solution*, lapack_complex_double*);
-	if     (strstr(c.bas, "q")) Interaction = InteractionQ;
-	else if(strstr(c.bas, "s")) Interaction = InteractionS;
-	else                        Interaction = InteractionN;
+	void (*Basis)(Config, double*, lapack_complex_double*);
+	if(is_Q) {
+		Interaction = InteractionQ;
+		Basis       = BasisQ;
+	}
+	else {
+		Interaction = InteractionN;
+		Basis       = BasisN;
+	}
 
-	void (*Basis)(Config, int, lapack_complex_double*, lapack_complex_double*);
-	if (strstr(c.bas, "q")) Basis = BasisQ;
-	else Basis = BasisN;
-
-	// run
-	CalcSolution(c, &s, &lp, System, Interaction, Basis);
-	//MakeBand(c, &s, &lp, Interaction, Basis);
-	//MakeDOS(c, &s, &lp, Interaction, Basis);
+	GenSolution(c, &s, Symmetry, Interaction, Basis);
 
 	free(s.n);
 	free(s.m);
+
 	return 0;
 }

@@ -2,3 +2,5 @@ Ni 1
 Nc 3
 Q 0 0 0
 Lattice lat
+
+Rho 0 0 0

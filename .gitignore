@@ -1,5 +1,5 @@
-output/
-diagram/
+output/*
+diagram/*
 
 dmft/
 dmft_old/
