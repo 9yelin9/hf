@@ -11,7 +11,7 @@ parser.add_argument('-du', '--dU', type=float, help='<dU>')
 args = parser.parse_args()                                                                     
 
 fd = open('job/default.txt', 'r')
-save = 'AF_dU%.1f' % args.dU
+save = 'dU%.1f' % args.dU
 os.makedirs('job/%s'    % save, exist_ok=True)
 os.makedirs('log/%s'    % save, exist_ok=True)
 os.makedirs('output/%s' % save, exist_ok=True)
