@@ -1,4 +1,4 @@
-DIRS = lib main
+DIRS = hf run
 
 .PHONY: all clean dep
 .SUFFIXES : .c .o
