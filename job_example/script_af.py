@@ -34,7 +34,7 @@ for t in ts:
 			elif re.search('###', line):
 				f.write('for n in `seq 0.2 0.2 11.8`\ndo\n')
 				f.write('\tfor u in `seq 0 %.1f 8`\n\tdo\n' % args.dU)
-				f.write('\t\t./main/hf %s %s %.2f 0 $n $u\n\tdone\ndone\n' % (save, t, j))
+				f.write('\t\t./hf/hf %s %s %.2f 0 $n $u\n\tdone\ndone\n' % (save, t, j))
 			else: f.write(line)
 
 		f.close()

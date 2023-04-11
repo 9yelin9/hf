@@ -2,7 +2,7 @@
 . /home/9yelin9/.bash_profile
 
 #$ -q openmp.q@phase07
-#$ -pe mpi 1
+#$ -pe mpi 72
 #$ -j y
 #$ -cwd
 #$ -o log/$JOB_NAME.log
@@ -10,7 +10,10 @@
 t0=$(date +%s.%N)
 t0_string=$(date)
 
-###
+./hf/tb F
+./hf/tb A
+./hf/tb C
+./hf/tb G
 
 t1=$(date +%s.%N)
 t1_string=$(date)
