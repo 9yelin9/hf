@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter)
 parser.add_argument('-s', '--save', default=None, help='<save>')
 parser.add_argument('-i', '--inhf', nargs='+', default=None, help='l                    : GenLat\n'\
+																 +'l222                 : GenLat222\n'\
 																 +'kb <ltype> [Nk=1024] : GenKB\n'\
 																 +'kg [Nk1=32]          : GenKG\n'\
 																 +'uf <fkn> <type>      : GenUF\n')
@@ -20,11 +21,12 @@ args = parser.parse_args()
 
 # inhf
 if args.inhf:
-	from hf import inhf
+	from pyhf import inhf
 	ih = inhf.InHF()
 
-	if   args.inhf[0] == 'l' : ih.GenLat()
-	elif args.inhf[0] == 'kb': ih.GenKB(*args.inhf[1:])
-	elif args.inhf[0] == 'kg': ih.GenKG(*args.inhf[1:])
-	elif args.inhf[0] == 'uf': ih.GenUF(*args.inhf[1:])
+	if   args.inhf[0] == 'l'   : ih.GenLat()
+	elif args.inhf[0] == 'l222': ih.GenLat222()
+	elif args.inhf[0] == 'kb'  : ih.GenKB(*args.inhf[1:])
+	elif args.inhf[0] == 'kg'  : ih.GenKG(*args.inhf[1:])
+	elif args.inhf[0] == 'uf'  : ih.GenUF(*args.inhf[1:])
 	sys.exit()
