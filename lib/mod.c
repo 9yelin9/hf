@@ -2,6 +2,16 @@
 
 #include "hf.h" 
 
+void ShowProgress(int i, int i_max) {
+	int x, ticks=50;
+
+	printf("\r[");
+	for(x=0; x<ticks*(i/i_max); x++) printf("=");
+	for(   ; x<ticks;           x++) printf(" ");
+	printf("] %10d/%d", i+1, i_max);
+	fflush(stdout);
+}
+
 void ReplaceStr(char *in, char *org, char *rep, char *out) {
 	int n;
 	char *tmp;
@@ -11,16 +21,6 @@ void ReplaceStr(char *in, char *org, char *rep, char *out) {
 
 	strncpy(out, in, n);  
 	sprintf(out+n, "%s%s", rep, tmp+strlen(org));
-}
-
-void ShowProgress(int i, int i_max) {
-	int x, ticks=50;
-
-	printf("\r[");
-	for(x=0; x<ticks*(i/i_max); x++) printf("=");
-	for(   ; x<ticks;           x++) printf(" ");
-	printf("] %10d/%d", i+1, i_max);
-	fflush(stdout);
 }
 
 void GetDimsH5(char *fn, char *dn, hsize_t *dims) {
