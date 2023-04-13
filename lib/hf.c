@@ -217,7 +217,7 @@ void GenSolution(Config c, Solution *s, void (*Symmetry)(), void (*Interaction)(
 	int itr, i, j, is_cvg, one = strstr(c.type, "F") ? 1 : -1;
 	char buf[1024];
 	double tmp, w[Nkg], uf[Nkg][c.Ni], ev[Nkg][c.Nb], e_min, e_max;
-	double V = pow(2*M_PI, DIM), oc[c.Nb], n[c.Nc], m[c.Nc], ns = 0, ms = 0, cvg[c.Nc][CVG_MAX], avg;
+	double V = pow(2*M_PI, DIM), oc[c.Nb], oc_sum, cvg[c.Nc][CVG_MAX], avg;
 	double uplow = 100, dntop = -100, e = 0;
 	lapack_complex_double tb[Nkg][c.Nb*c.Nb], es[Nkg][c.Nb*c.Nb];
 
@@ -264,42 +264,40 @@ void GenSolution(Config c, Solution *s, void (*Symmetry)(), void (*Interaction)(
 
 		while(fabs(s->fermi - e_max) > 1e-8) {
 			memset(oc, 0, sizeof(oc));
+			oc_sum = 0;
+
 			for(i=0; i<Nkg; i++) Quadrature(c, s, w[i], ev[i], es[i], oc);
-			for(i=0; i<c.Nb; i++) oc[i] /= V;
 
-			memset(n, 0, sizeof(n));
-			memset(m, 0, sizeof(m));
-			for(i=0; i<c.Ni; i++) {
-				for(j=0; j<c.Nc; j++) {
-					n[j] +=  oc[OC_IDX] + oc[OC_IDX + c.Ns];
-					m[j] += (oc[OC_IDX] - oc[OC_IDX + c.Ns]) * pow(one, i);
-				}
-			}
-			Symmetry(n, m);
-
-			ns = ms = 0;
-			for(i=0; i<c.Nc; i++) {
-				ns += n[i];
-				ms += m[i];
+			for(i=0; i<c.Nb; i++) {
+				oc[i] /= V;
+				oc_sum += oc[i];
 			}
 
-			if(fabs(ns - s->N) < 1e-4) break;
+			if(fabs(oc_sum - s->N) < 1e-4) break;
 			else {
-				if(ns < s->N) e_min = s->fermi;
-				else          e_max = s->fermi;
+				if(oc_sum < s->N) e_min = s->fermi;
+				else              e_max = s->fermi;
 				s->fermi = 0.5 * (e_min + e_max);
 			}
 		}
 
 		for(i=0; i<c.Nc; i++) {
-			s->n[i] = n[i];
-			s->m[i] = m[i];
+			s->n[i] = 0;
+			s->m[i] = 0;
 		}
-		s->ns = ns;
-		s->ms = ms;
-		printf("%f\t", s->fermi);
-		for(i=0; i<c.Nb; i++) printf("%f\t", oc[i]);
-		printf("\n");
+		s->ns = 0;
+		s->ms = 0;
+
+		for(i=0; i<c.Ni; i++) {
+			for(j=0; j<c.Nc; j++) {
+				s->n[j] +=  oc[OC_IDX] + oc[OC_IDX + c.Ns];
+				s->m[j] += (oc[OC_IDX] - oc[OC_IDX + c.Ns]) * pow(one, i);
+			}
+		}
+		for(i=0; i<c.Nc; i++) {
+			s->ns += s->n[i];
+			s->ms += s->m[i];
+		}
 
 		fprintf(fs, "%22.16f", s->fermi);
 		for(i=0; i<c.Nb; i++) fprintf(fs, "%22.16f", oc[i]);
@@ -307,15 +305,16 @@ void GenSolution(Config c, Solution *s, void (*Symmetry)(), void (*Interaction)(
 			
 		is_cvg = 0;
 		for(i=0; i<c.Nc; i++) {
-			cvg[i][itr % CVG_MAX] = m[i];
+			cvg[i][itr % CVG_MAX] = s->m[i];
 
 			avg = 0;
 			for(j=0; j<CVG_MAX; j++) avg += cvg[i][j];
 			avg /= CVG_MAX;
 
-			if(fabs(avg - m[i]) < 1e-6) is_cvg++;
+			if(fabs(avg - s->m[i]) < 1e-6) is_cvg++;
 		}
 		if(is_cvg == c.Nc) break;
+		Symmetry(s->n, s->m);
 	}
 	fclose(fs);
 
@@ -453,9 +452,6 @@ void GenDOS(Config c, Solution *s, char *fsn, double ep, void (*Interaction)(), 
 		fscanf(fs, "%lf", &s->fermi);
 		for(i=0; i<c.Nb; i++) fscanf(fs, "%lf", &oc[i]);
 	}
-	printf("%f\t", s->fermi);
-	for(i=0; i<c.Nb; i++) printf("%f\t", oc[i]);
-	printf("\n");
 	fclose(fs);
 
 	for(i=0; i<c.Nc; i++) {
@@ -471,7 +467,6 @@ void GenDOS(Config c, Solution *s, char *fsn, double ep, void (*Interaction)(), 
 			s->m[j] += (oc[OC_IDX] - oc[OC_IDX + c.Ns]) * pow(one, i);
 		}
 	}
-
 	for(i=0; i<c.Nc; i++) {
 		s->ns += s->n[i];
 		s->ms += s->m[i];
