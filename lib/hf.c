@@ -297,6 +297,9 @@ void GenSolution(Config c, Solution *s, void (*Symmetry)(), void (*Interaction)(
 		}
 		s->ns = ns;
 		s->ms = ms;
+		printf("%f\t", s->fermi);
+		for(i=0; i<c.Nb; i++) printf("%f\t", oc[i]);
+		printf("\n");
 
 		fprintf(fs, "%22.16f", s->fermi);
 		for(i=0; i<c.Nb; i++) fprintf(fs, "%22.16f", oc[i]);
@@ -450,7 +453,6 @@ void GenDOS(Config c, Solution *s, char *fsn, double ep, void (*Interaction)(), 
 		fscanf(fs, "%lf", &s->fermi);
 		for(i=0; i<c.Nb; i++) fscanf(fs, "%lf", &oc[i]);
 	}
-	printf("%s\n", fsn);
 	printf("%f\t", s->fermi);
 	for(i=0; i<c.Nb; i++) printf("%f\t", oc[i]);
 	printf("\n");
