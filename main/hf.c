@@ -97,6 +97,7 @@ int main(int argc, char *argv[]) {
 		while((f = readdir(d)) != NULL) {
 			if(strstr(f->d_name, stype)) break;
 		}
+		printf("%s\n", f->d_name);
 
 		GenDOS(c, &s, f->d_name, ep, Interaction, Basis);
 		closedir(d);
