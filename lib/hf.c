@@ -488,6 +488,7 @@ void GenDOS(Config c, Solution *s, char *fsn, double ep, void (*Interaction)(), 
 	s->e = e / V;
 
 	ReplaceStr(s->runtime, strstr(s->runtime, "v"), strstr(fsn, "v"), s->runtime);
+	ReplaceStr(s->runtime, strstr(s->runtime, ".txt"), "", s->runtime);
 	printf("%s\n", s->runtime);
 
 	GenSolDOS(c, s, ep, (double*)ev, (lapack_complex_double*)es);
