@@ -91,6 +91,7 @@ int main(int argc, char *argv[]) {
 		char dsn[256], ftype[32], fsn[256];
 		sprintf(dsn, "%s/sol", s.save);
 		sprintf(ftype, "N%.1f_U%.1f", s.N, s.U);
+		printf("%s\n%s\n", dsn, ftype);
 
 		DIR *d = opendir(dsn);
 		struct dirent *f;
