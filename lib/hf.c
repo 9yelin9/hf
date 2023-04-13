@@ -19,7 +19,7 @@ void FileName(Solution *s, char *ftype, char *fn) {
 			   	save, ftype, s->N, s->U, s->runtime);
 	}
 	else {
-		sprintf(fn, "%s/%s_N%.1f_U%.1f_n%.16f_m%.16f_e%.16f_gap%.16f_fermi%.16f_dntop%.16f_%s.txt",\
+		sprintf(fn, "%s/%s_N%.1f_U%.1f_n%f_m%f_e%f_gap%f_fermi%f_dntop%f_%s.txt",\
 			   	save, ftype, s->N, s->U, s->ns, s->ms, s->e, s->gap, s->fermi, s->dntop, s->runtime);
 	}
 }
