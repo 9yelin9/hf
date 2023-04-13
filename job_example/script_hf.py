@@ -40,7 +40,7 @@ for t in ts:
 
 				f.write('\tfor u in `seq 0 %.1f %d`\n\tdo\n' % (args.dU, args.UF))
 
-				if args.ep: f.write('\t\t./hf/hf %s %s %.2f 0 $n $u %.2f\n\tdone\ndone\n' % (save, t, j, args.ep))
+				if args.ep: f.write('\t\t./hf/hf %s %s %.2f 0 $n $u %.2f\n\tdone\ndone\n' % (save, t, j, args.EP))
 				else:       f.write('\t\t./hf/hf %s %s %.2f 0 $n $u\n\tdone\ndone\n' % (save, t, j))
 			else: f.write(line)
 
