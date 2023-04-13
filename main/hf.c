@@ -20,7 +20,7 @@ void SymmetryG(double *n, double *m) {n[2] = n[1] = n[0]; m[2] = m[1] = m[0];}
 
 int main(int argc, char *argv[]) {
 	if(argc < 2) {
-		printf("%s <save> <type> <J/U> <SOC> <N> <U>\n", argv[0]);
+		printf("%s <save> <type> <J/U> <SOC> <N> <U> <(dos)ep>\n", argv[0]);
 		exit(1);
 	}
 	omp_set_num_threads(1);
@@ -85,7 +85,22 @@ int main(int argc, char *argv[]) {
 		Basis       = BasisN;
 	}
 
-	GenSolution(c, &s, Symmetry, Interaction, Basis);
+	if(argv[7]) {
+		double ep = atof(argv[7]);
+
+		char dsn[256], ftype[32], fsn[256];
+		sprintf(dsn, "%s/sol", s.save);
+		sprintf(ftype, "N%.1f_U%.1f", s.N, s.U);
+
+		DIR *d = opendir(dsn);
+		struct dirent *f;
+		while(!(f = readdir(d))) {
+			if(strstr(f->d_name, ftype)) printf("%s\n", f->d_name);
+		}
+
+		//GenDOS(c, &s, fsn, ep, Interaction, Basis);
+	}
+	else GenSolution(c, &s, Symmetry, Interaction, Basis);
 
 	free(s.n);
 	free(s.m);

@@ -416,3 +416,45 @@ void GenSolDOS(Config c, Solution *s, double *ev, lapack_complex_double *es) {
 	printf("%s(%s) : %lds\n", __func__, fdn, t1 - t0);
 }
 
+/*
+void GenDOS(Config c, Solution *s, double ep, void (*Interaction)(), void (*Basis)()) {
+	char ftype[16], fun[256], ftn[256], fsn[256], fdn[256];
+	sprintf(fun, "input/ufg_Nk%d_%c.txt", Nkg, c.type[0]);
+	sprintf(ftn, "input/tbg_Nk%d_%c.bin", Nkg, c.type[0]);
+	sprintf(ftn, "output/%s/sol/", Nkg, c.type[0]);
+	sprintf(ftype, "dos_ep%.2f", ep);
+	FileName(s, ftype, fdn);
+
+	time_t t0 = time(NULL);
+
+	FILE *fu = fopen(fun, "r"), *ft = fopen(ftn, "rb"), *fs = fopen(fsn, "r"), *fd = fopen(fdn, "w");
+	int itv, itv_max, i, j;
+	double e, e_min, e_max, dos[c.Nb], V = pow(2*M_PI, 3) * pow(2*M_PI, 3) * M_PI; 
+	
+	itv_max = 256;
+	e_min = -8;
+	e_max =  8;
+
+	fprintf(fd, "%22s", "e");
+	for(i=0; i<c.Nb; i++) fprintf(fd, "%20s%02d", "dos", i+1);
+	fprintf(fd, "\n");
+
+	for(itv=0; itv<=itv_max; itv++) {
+		memset(dos, 0, sizeof(dos));
+		e = e_min + (e_max - e_min) * itv / itv_max;
+
+		for(i=0; i<Nkg*c.Nb; i++) {
+			for(j=0; j<c.Nb; j++) dos[j] += GREEN_IMG * CSQR(es[c.Nb*i + j]);
+		}
+
+		fprintf(fd, "%22.16f", e);
+		for(i=0; i<c.Nb; i++) fprintf(fd, "%22.16f", dos[i] / V);
+		fprintf(fd, "\n");
+	}
+
+	fclose(fd);
+
+	time_t t1 = time(NULL);
+	printf("%s(%s) : %lds\n", __func__, fdn, t1 - t0);
+}
+*/
