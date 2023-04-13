@@ -5,7 +5,7 @@
 #define OC_IDX    (c.Nc*i + j)
 #define INTER_N   (0.5 * ((s->U) * n[OBT_IDX] + (s->U - 2*s->J) * n_[OBT_IDX] + (s->U - 3*s->J) * n_[OBT_IDX]))
 #define INTER_M   (0.5 * ((s->U) * m[OBT_IDX] + (s->U - 2*s->J) * m_[OBT_IDX] - (s->U - 3*s->J) * m_[OBT_IDX])) 
-#define GREEN_IMG (EP / (pow(e - ev[i] + s->fermi, 2) + pow(EP, 2))) 
+#define GREEN_IMG (ep / (pow(e - ev[i] + s->fermi, 2) + pow(ep, 2))) 
 
 #include "hf.h" 
 
@@ -15,11 +15,11 @@ void FileName(Solution *s, char *ftype, char *fn) {
 	if(-access(save, 0)) mkdir(save, 0755);
 
 	if(strstr(ftype, "sol")) {
-		sprintf(fn, "%s/%s_N%.1f_U%.1f_v%s.txt",\
+		sprintf(fn, "%s/%s_N%.1f_U%.1f_%s.txt",\
 			   	save, ftype, s->N, s->U, s->runtime);
 	}
 	else {
-		sprintf(fn, "%s/%s_N%.1f_U%.1f_n%.16f_m%.16f_e%.16f_gap%.16f_fermi%.16f_dntop%.16f_v%s.txt",\
+		sprintf(fn, "%s/%s_N%.1f_U%.1f_n%.16f_m%.16f_e%.16f_gap%.16f_fermi%.16f_dntop%.16f_%s.txt",\
 			   	save, ftype, s->N, s->U, s->ns, s->ms, s->e, s->gap, s->fermi, s->dntop, s->runtime);
 	}
 }
@@ -68,12 +68,12 @@ void CalcEigen(Config c, double *ev, lapack_complex_double *es) {
 	}
 }
 
-void CalcGap(Config c, Solution *s, double *ev, lapack_complex_double *es, double fermi_width, double *uplow, double *dntop) {
+void CalcGap(Config c, Solution *s, double *ev, lapack_complex_double *es, double *uplow, double *dntop) {
 	int i;
 
 	for(i=0; i<c.Nb; i++) {
-		if     (ev[i] > s->fermi + fermi_width / 2 && ev[i] < *uplow) *uplow = ev[i];
-		else if(ev[i] < s->fermi - fermi_width / 2 && ev[i] > *dntop) *dntop = ev[i];
+		if     (ev[i] > s->fermi + FERMI_WIDTH / 2 && ev[i] < *uplow) *uplow = ev[i];
+		else if(ev[i] < s->fermi - FERMI_WIDTH / 2 && ev[i] > *dntop) *dntop = ev[i];
 	}
 }
 
@@ -218,7 +218,7 @@ void GenSolution(Config c, Solution *s, void (*Symmetry)(), void (*Interaction)(
 	char buf[1024];
 	double tmp, w[Nkg], uf[Nkg][c.Ni], ev[Nkg][c.Nb], e_min, e_max;
 	double V = pow(2*M_PI, DIM), oc[c.Nb], n[c.Nc], m[c.Nc], ns = 0, ms = 0, cvg[c.Nc][CVG_MAX], avg;
-	double fermi_width = 1e-4, uplow = 100, dntop = -100, e = 0;
+	double uplow = 100, dntop = -100, e = 0;
 	lapack_complex_double tb[Nkg][c.Nb*c.Nb], es[Nkg][c.Nb*c.Nb];
 
 	// w
@@ -242,7 +242,7 @@ void GenSolution(Config c, Solution *s, void (*Symmetry)(), void (*Interaction)(
 	}
 
 	fprintf(fs, "%22s", "fermi");
-	for(i=0; i<c.Nb; i++) fprintf(fs, "%20s%02d", "oc", i+1);
+	for(i=0; i<c.Nb; i++) fprintf(fs, "%20s%02d", "oc", i);
 	fprintf(fs, "\n");
 
 	for(itr=0; itr<ITR_MAX; itr++) {
@@ -316,7 +316,7 @@ void GenSolution(Config c, Solution *s, void (*Symmetry)(), void (*Interaction)(
 	}
 	fclose(fs);
 
-	for(i=0; i<Nkg; i++) CalcGap(c, s, ev[i], es[i], fermi_width, &uplow, &dntop);
+	for(i=0; i<Nkg; i++) CalcGap(c, s, ev[i], es[i], &uplow, &dntop);
 	s->dntop = dntop;
 	s->gap   = uplow - dntop;
 
@@ -324,7 +324,7 @@ void GenSolution(Config c, Solution *s, void (*Symmetry)(), void (*Interaction)(
 	s->e = e / V;
 
 	GenSolBand(c, s, Interaction, Basis);
-	GenSolDOS(c, s, (double*)ev, (lapack_complex_double*)es);
+	GenSolDOS(c, s, EP, (double*)ev, (lapack_complex_double*)es);
 
 	time_t t1 = time(NULL);
 	printf("%s(%s) : %lds\n", __func__, fsn, t1 - t0);
@@ -378,16 +378,16 @@ void GenSolBand(Config c, Solution *s, void (*Interaction)(), void (*Basis)()) {
 	printf("%s(%s) : %lds\n", __func__, fbn, t1 - t0);
 }
 
-void GenSolDOS(Config c, Solution *s, double *ev, lapack_complex_double *es) {
+void GenSolDOS(Config c, Solution *s, double ep, double *ev, lapack_complex_double *es) {
 	char ftype[16], fdn[256];
-	sprintf(ftype, "dos_ep%.2f", EP);
+	sprintf(ftype, "dos_ep%.2f", ep);
 	FileName(s, ftype, fdn);
 
 	time_t t0 = time(NULL);
 
 	FILE *fd = fopen(fdn, "w");
 	int itv, itv_max, i, j;
-	double e, e_min, e_max, dos[c.Nb], V = pow(2*M_PI, 3) * pow(2*M_PI, 3) * M_PI; 
+	double e, e_min, e_max, dos[c.Nb], V = pow(2*M_PI, 3)*pow(2*M_PI, 3)*M_PI; 
 	
 	itv_max = 256;
 	e_min = -8;
@@ -416,45 +416,78 @@ void GenSolDOS(Config c, Solution *s, double *ev, lapack_complex_double *es) {
 	printf("%s(%s) : %lds\n", __func__, fdn, t1 - t0);
 }
 
-/*
-void GenDOS(Config c, Solution *s, double ep, void (*Interaction)(), void (*Basis)()) {
-	char ftype[16], fun[256], ftn[256], fsn[256], fdn[256];
+void GenDOS(Config c, Solution *s, char *fsn, double ep, void (*Interaction)(), void (*Basis)()) {
+	char fkn[256], fun[256], ftn[256];
+	sprintf(fkn, "input/kg_Nk%d.txt",     Nkg);
 	sprintf(fun, "input/ufg_Nk%d_%c.txt", Nkg, c.type[0]);
 	sprintf(ftn, "input/tbg_Nk%d_%c.bin", Nkg, c.type[0]);
-	sprintf(ftn, "output/%s/sol/", Nkg, c.type[0]);
-	sprintf(ftype, "dos_ep%.2f", ep);
-	FileName(s, ftype, fdn);
 
-	time_t t0 = time(NULL);
+	FILE *fk = fopen(fkn, "r"), *fu = fopen(fun, "r"), *ft = fopen(ftn, "rb"), *fs = fopen(fsn, "r");
+	int i, j, one = strstr(c.type, "F") ? 1 : -1;
+	char buf[1024];
+	double tmp, w[Nkg], uf[Nkg][c.Ni], ev[Nkg][c.Nb];
+	double V = pow(2*M_PI, DIM), oc[c.Nb], uplow = 100, dntop = -100, e;
+	lapack_complex_double tb[Nkg][c.Nb*c.Nb], es[Nkg][c.Nb*c.Nb];
 
-	FILE *fu = fopen(fun, "r"), *ft = fopen(ftn, "rb"), *fs = fopen(fsn, "r"), *fd = fopen(fdn, "w");
-	int itv, itv_max, i, j;
-	double e, e_min, e_max, dos[c.Nb], V = pow(2*M_PI, 3) * pow(2*M_PI, 3) * M_PI; 
-	
-	itv_max = 256;
-	e_min = -8;
-	e_max =  8;
+	// w
+	fgets(buf, sizeof(buf), fk); // skip header
+	for(i=0; i<Nkg; i++) fscanf(fk, "%lf%lf%lf%lf", &tmp, &tmp, &tmp, &w[i]);
+	fclose(fk);
 
-	fprintf(fd, "%22s", "e");
-	for(i=0; i<c.Nb; i++) fprintf(fd, "%20s%02d", "dos", i+1);
-	fprintf(fd, "\n");
+	// uf
+	fgets(buf, sizeof(buf), fu); // skip header
+	for(i=0; i<Nkg; i++) {
+		for(j=0; j<c.Ni; j++) fscanf(fu, "%lf", &uf[i][j]);
+	}
+	fclose(fu);
 
-	for(itv=0; itv<=itv_max; itv++) {
-		memset(dos, 0, sizeof(dos));
-		e = e_min + (e_max - e_min) * itv / itv_max;
+	// tb
+	fread(tb, sizeof(tb), 1, ft);
+	fclose(ft);
 
-		for(i=0; i<Nkg*c.Nb; i++) {
-			for(j=0; j<c.Nb; j++) dos[j] += GREEN_IMG * CSQR(es[c.Nb*i + j]);
+	// sol
+	fgets(buf, sizeof(buf), fs); // skip header
+	while(!feof(fs)) {
+		fscanf(fs, "%lf", &s->fermi);
+		for(i=0; i<c.Nb; i++) fscanf(fs, "%lf", &oc[i]);
+	}
+	fclose(fs);
+
+	for(i=0; i<c.Nc; i++) {
+		s->n[i] = 0;
+		s->m[i] = 0;
+	}
+	s->ns = 0;
+	s->ms = 0;
+
+	for(i=0; i<c.Ni; i++) {
+		for(j=0; j<c.Nc; j++) {
+			s->n[j] +=  oc[OC_IDX] + oc[OC_IDX + c.Ns];
+			s->m[j] += (oc[OC_IDX] - oc[OC_IDX + c.Ns]) * pow(one, i);
 		}
-
-		fprintf(fd, "%22.16f", e);
-		for(i=0; i<c.Nb; i++) fprintf(fd, "%22.16f", dos[i] / V);
-		fprintf(fd, "\n");
 	}
 
-	fclose(fd);
+	for(i=0; i<c.Nc; i++) {
+		s->ns += s->n[i];
+		s->ms += s->m[i];
+	}
 
-	time_t t1 = time(NULL);
-	printf("%s(%s) : %lds\n", __func__, fdn, t1 - t0);
+	for(i=0; i<Nkg; i++) {
+		for(j=0; j<c.Nb*c.Nb; j++) es[i][j] = tb[i][j];
+
+		Interaction(c, s, es[i]);
+		CalcEigen(c, ev[i], es[i]);
+		Basis(c, uf[i], es[i]);
+	}
+
+	for(i=0; i<Nkg; i++) CalcGap(c, s, ev[i], es[i], &uplow, &dntop);
+	s->dntop = dntop;
+	s->gap   = uplow - dntop;
+
+	for(i=0; i<Nkg; i++) CalcE(c, s, w[i], ev[i], es[i], &e);
+	s->e = e / V;
+
+	ReplaceStr(s->runtime, strstr(s->runtime, "v"), strstr(fsn, "v"), s->runtime);
+
+	GenSolDOS(c, s, ep, (double*)ev, (lapack_complex_double*)es);
 }
-*/

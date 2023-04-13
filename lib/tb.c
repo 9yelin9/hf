@@ -87,7 +87,7 @@ void GenTB(Config c, char *ktype, void (*Fourier)()) {
 	lapack_complex_double tb[Nk][c.Nb*c.Nb];
 
 	// lat
-	fgets(buf, sizeof(buf), fl);
+	fgets(buf, sizeof(buf), fl); // skip header
 	Nl = atoi(buf);
 	Lattice lat = {
 		.site = calloc(Nl, sizeof(*lat.site)),

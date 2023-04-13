@@ -12,8 +12,9 @@
 
 #define M_INIT 0.1  // initial magnetization
 
-#define ITR_MAX 32 // maximum iteration of bisection
-#define CVG_MAX 3  // maximum iteration of checking convergence
+#define FERMI_WIDTH 1e-4 // width of Fermi level
+#define ITR_MAX     32   // maximum iteration of bisection
+#define CVG_MAX     3    // maximum iteration of checking convergence
 
 #define EP 0.02 // broadening rate of DOS
 
@@ -75,7 +76,7 @@ void FileName(Solution *s, char *ftype, char *fn); // file name
 void ReadConfig(Config *c); // read config_*.txt
 void InitSolution(Config c, Solution *s); // initialize occupation and magnetization
 void CalcEigen(Config c, double *ev, lapack_complex_double *es); // calculate eigenproblems
-void CalcGap(Config c, Solution *s, double *ev, lapack_complex_double *es, double fermi_width, double *uplow, double *dntop); // calculate band gap 
+void CalcGap(Config c, Solution *s, double *ev, lapack_complex_double *es, double *uplow, double *dntop); // calculate band gap 
 void CalcE(Config c, Solution *s, double w, double *ev, lapack_complex_double *es, double *e); // calculate sum of energy under dntop
 void InteractionN(Config c, Solution *s, lapack_complex_double *tb); // add interaction term
 void InteractionQ(Config c, Solution *s, lapack_complex_double *tb); // add interaction termi (Q basis)
@@ -84,7 +85,8 @@ void BasisQ(Config c, double *uf, lapack_complex_double *es); // basis transform
 void Quadrature(Config c, Solution *s, double w, double *ev, lapack_complex_double *es, double *oc); // Gauss-Legendre quadrature
 void GenSolution(Config c, Solution *s, void (*Symmetry)(), void (*Interaction)(), void (*Basis)()); // generate self-consistent solution by bisection
 void GenSolBand(Config c, Solution *s, void (*Interaction)(), void (*Basis)()); // generate band structure from solution
-void GenSolDOS(Config c, Solution *s, double *ev, lapack_complex_double *es); // generate density of states from solution
+void GenSolDOS(Config c, Solution *s, double ep, double *ev, lapack_complex_double *es); // generate density of states from solution
+void GenDOS(Config c, Solution *s, char *fsn, double ep, void (*Interaction)(), void (*Basis)()); // generate density of states from solution
 
 // lib/tb.c
 void FourierN(Config c, int Nl, Lattice lat, double *k, lapack_complex_double *tb); // Fourier transform

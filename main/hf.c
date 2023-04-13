@@ -50,7 +50,7 @@ int main(int argc, char *argv[]) {
 		.gap   = 100,
 		.e     = 100
 	};
-	sprintf(s.runtime, "%d%d%d%d", tm->tm_mon+1, tm->tm_mday, tm->tm_hour, tm->tm_min); 
+	sprintf(s.runtime, "v%d%d%d%d", tm->tm_mon+1, tm->tm_mday, tm->tm_hour, tm->tm_min); 
 
 	char save[1024];
 	sprintf(save, "output/%s/%s_JU%.2f_SOC%.2f", s.save, s.type, s.JU, s.SOC);
@@ -88,17 +88,18 @@ int main(int argc, char *argv[]) {
 	if(argv[7]) {
 		double ep = atof(argv[7]);
 
-		char dsn[256], ftype[32], fsn[256];
+		char dsn[256], stype[32];
 		sprintf(dsn, "%s/sol", s.save);
-		sprintf(ftype, "N%.1f_U%.1f", s.N, s.U);
+		sprintf(stype, "N%.1f_U%.1f", s.N, s.U);
 
 		DIR *d = opendir(dsn);
 		struct dirent *f;
 		while((f = readdir(d)) != NULL) {
-			if(strstr(f->d_name, ftype)) printf("%s\t%s\n", ftype, f->d_name);
+			if(strstr(f->d_name, stype)) break;
 		}
 
-		//GenDOS(c, &s, fsn, ep, Interaction, Basis);
+		GenDOS(c, &s, f->d_name, ep, Interaction, Basis);
+		closedir(d);
 	}
 	else GenSolution(c, &s, Symmetry, Interaction, Basis);
 
