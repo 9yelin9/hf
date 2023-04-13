@@ -433,6 +433,7 @@ void GenDOS(Config c, Solution *s, char *fsn, double ep, void (*Interaction)(), 
 	fgets(buf, sizeof(buf), fk); // skip header
 	for(i=0; i<Nkg; i++) fscanf(fk, "%lf%lf%lf%lf", &tmp, &tmp, &tmp, &w[i]);
 	fclose(fk);
+	printf("w\n");
 
 	// uf
 	fgets(buf, sizeof(buf), fu); // skip header
@@ -440,10 +441,12 @@ void GenDOS(Config c, Solution *s, char *fsn, double ep, void (*Interaction)(), 
 		for(j=0; j<c.Ni; j++) fscanf(fu, "%lf", &uf[i][j]);
 	}
 	fclose(fu);
+	printf("uf\n");
 
 	// tb
 	fread(tb, sizeof(tb), 1, ft);
 	fclose(ft);
+	printf("tb\n");
 
 	// sol
 	fgets(buf, sizeof(buf), fs); // skip header
