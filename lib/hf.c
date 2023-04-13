@@ -242,7 +242,7 @@ void GenSolution(Config c, Solution *s, void (*Symmetry)(), void (*Interaction)(
 	}
 
 	fprintf(fs, "%22s", "fermi");
-	for(i=0; i<c.Nb; i++) fprintf(fs, "%20s%02d", "oc", i);
+	for(i=0; i<c.Nb; i++) fprintf(fs, "%20s%02d", "oc", i+1);
 	fprintf(fs, "\n");
 
 	for(itr=0; itr<ITR_MAX; itr++) {
@@ -355,9 +355,8 @@ void GenSolBand(Config c, Solution *s, void (*Interaction)(), void (*Basis)()) {
 	fread(tb, sizeof(tb), 1, ft);
 	fclose(ft);
 
-	// band
-	for(i=0; i<c.Nb; i++) fprintf(fb, "%20s%02d", "e", i);
-	for(i=0; i<c.Nb; i++) fprintf(fb, "%20s%02d", "w", i);
+	for(i=0; i<c.Nb; i++) fprintf(fb, "%20s%02d", "e", i+1);
+	for(i=0; i<c.Nb; i++) fprintf(fb, "%20s%02d", "w", i+1);
 	fprintf(fb, "\n");
 
 	for(i=0; i<Nkb; i++) {
@@ -489,7 +488,6 @@ void GenDOS(Config c, Solution *s, char *fsn, double ep, void (*Interaction)(), 
 
 	ReplaceStr(s->runtime, strstr(s->runtime, "v"), strstr(fsn, "v"), s->runtime);
 	ReplaceStr(s->runtime, strstr(s->runtime, ".txt"), "", s->runtime);
-	printf("%s\n", s->runtime);
 
 	GenSolDOS(c, s, ep, (double*)ev, (lapack_complex_double*)es);
 }
