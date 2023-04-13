@@ -1,6 +1,7 @@
 import os
-os.environ['OMP_NUM_THREADS'] = '1'
-os.environ['OPENBLAS_NUM_THREADS'] = '1'
+num_thread = 1
+os.environ['OMP_NUM_THREADS'] = str(num_thread)
+os.environ['OPENBLAS_NUM_THREADS'] = str(num_thread)
 
 import re
 import argparse
