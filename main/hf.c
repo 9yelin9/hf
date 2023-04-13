@@ -90,13 +90,12 @@ int main(int argc, char *argv[]) {
 
 		char dsn[256], ftype[32], fsn[256];
 		sprintf(dsn, "%s/sol", s.save);
-		sprintf(ftype, "N%.1f_U%.1f", s.N, s.U);
-		printf("%s\n%s\n", dsn, ftype);
 
 		DIR *d = opendir(dsn);
 		struct dirent *f;
 		while(!(f = readdir(d))) {
-			if(strstr(f->d_name, ftype)) printf("%s\n", f->d_name);
+			printf("%s\n", f->d_name);
+			//if(strstr(f->d_name, ftype)) printf("%s\n", f->d_name);
 		}
 
 		//GenDOS(c, &s, fsn, ep, Interaction, Basis);
