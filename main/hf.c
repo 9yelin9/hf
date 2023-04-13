@@ -88,7 +88,7 @@ int main(int argc, char *argv[]) {
 	if(argv[7]) {
 		double ep = atof(argv[7]);
 
-		char dsn[256], stype[32];
+		char dsn[256], stype[32], fsn[256];
 		sprintf(dsn, "%s/sol", s.save);
 		sprintf(stype, "N%.1f_U%.1f", s.N, s.U);
 
@@ -97,9 +97,9 @@ int main(int argc, char *argv[]) {
 		while((f = readdir(d)) != NULL) {
 			if(strstr(f->d_name, stype)) break;
 		}
-		printf("%s\n", f->d_name);
 
-		GenDOS(c, &s, f->d_name, ep, Interaction, Basis);
+		sprintf(fsn, "%s/sol/%s", s.save, f->d_name);
+		GenDOS(c, &s, fsn, ep, Interaction, Basis);
 		closedir(d);
 	}
 	else GenSolution(c, &s, Symmetry, Interaction, Basis);
