@@ -93,8 +93,8 @@ int main(int argc, char *argv[]) {
 
 		DIR *d = opendir(dsn);
 		struct dirent *f;
-		while((f = readdir(d))) {
-			if(strstr(f->d_name, ftype)) printf("%s\n", f->d_name);
+		while((f = readdir(d)) != NULL) {
+			if(strstr(f->d_name, ftype)) printf("%s\t%s\n", ftype, f->d_name);
 		}
 
 		//GenDOS(c, &s, fsn, ep, Interaction, Basis);
