@@ -450,6 +450,9 @@ void GenDOS(Config c, Solution *s, char *fsn, double ep, void (*Interaction)(), 
 		fscanf(fs, "%lf", &s->fermi);
 		for(i=0; i<c.Nb; i++) fscanf(fs, "%lf", &oc[i]);
 	}
+	printf("%f\t", s->fermi);
+	for(i=0; i<c.Nb; i++) printf("%f\t", oc[i]);
+	printf("\n");
 	fclose(fs);
 
 	for(i=0; i<c.Nc; i++) {

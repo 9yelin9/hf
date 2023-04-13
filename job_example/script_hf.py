@@ -15,9 +15,14 @@ args = parser.parse_args()
 
 fd = open('job/default.txt', 'r')
 save = 'dU%.1f_UF%d' % (args.dU, args.UF)
-os.makedirs('job/%s'    % save, exist_ok=True)
-os.makedirs('log/%s'    % save, exist_ok=True)
 os.makedirs('output/%s' % save, exist_ok=True)
+
+if args.EP:
+	os.makedirs('job/%s'    % (save+'_ep%.2f'%args.EP), exist_ok=True)
+	os.makedirs('log/%s'    % (save+'_ep%.2f'%args.EP), exist_ok=True)
+else:
+	os.makedirs('job/%s'    % save, exist_ok=True)
+	os.makedirs('log/%s'    % save, exist_ok=True)
 
 js = np.arange(0, 0.3, 0.1)
 ts = ['F0'] + ['A0', 'A2', 'A5'] + ['C0', 'C1', 'C6'] + ['G0']
