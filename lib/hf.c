@@ -1,8 +1,8 @@
 // lib/hf.c : functions for Hartree-Fock approximation
 
-#define OBT_IDX   ((i / c.Nb) % c.Nc)
-#define ES_IDX    (c.Nb*i + c.Nc*(j/c.Nc) + j)
-#define OC_IDX    (c.Nc*i + j)
+#define OBT_IDX   ((i / c.Nb) % Nc)
+#define ES_IDX    (c.Nb*i + Nc*(j/Nc) + j)
+#define OC_IDX    (Nc*i + j)
 #define INTER_N   (0.5 * ((s->U) * n[OBT_IDX] + (s->U - 2*s->J) * n_[OBT_IDX] + (s->U - 3*s->J) * n_[OBT_IDX]))
 #define INTER_M   (0.5 * ((s->U) * m[OBT_IDX] + (s->U - 2*s->J) * m_[OBT_IDX] - (s->U - 3*s->J) * m_[OBT_IDX])) 
 #define GREEN_IMG (ep / (pow(e - ev[i] + s->fermi, 2) + pow(ep, 2))) 
@@ -15,6 +15,10 @@ void FileName(Solution *s, char *ftype, char *fn) {
 	if(-access(save, 0)) mkdir(save, 0755);
 
 	if(strstr(ftype, "sol")) {
+		sprintf(fn, "%s/%s_N%.1f_U%.1f_%s.bin",\
+			   	save, ftype, s->N, s->U, s->runtime);
+	}
+	else if(strstr(ftype, "oc")) {
 		sprintf(fn, "%s/%s_N%.1f_U%.1f_%s.txt",\
 			   	save, ftype, s->N, s->U, s->runtime);
 	}
@@ -34,23 +38,22 @@ void ReadConfig(Config *c) {
 
 	while(!feof(f)) {
 		fgets(buf, sizeof(buf), f);
-		if      (strstr(buf, "Ni"))      sscanf(buf, "Ni %d", &c->Ni);
-		else if (strstr(buf, "Nc"))      sscanf(buf, "Nc %d", &c->Nc);
-		else if (strstr(buf, "Q"))       sscanf(buf, "Q %lf%lf%lf", &c->Q[0], &c->Q[1], &c->Q[2]);
-		else if (strstr(buf, "Lattice")) sscanf(buf, "Lattice %s", c->lat);
+		if     (strstr(buf, "Ni"))      sscanf(buf, "Ni %d", &c->Ni);
+		else if(strstr(buf, "Q"))       sscanf(buf, "Q %lf%lf%lf", &c->Q[0], &c->Q[1], &c->Q[2]);
+		else if(strstr(buf, "Lattice")) sscanf(buf, "Lattice %s", c->lat);
 	}
 	fclose(f);
 
-	c->Ns = c->Ni * c->Nc;
-	c->Nb = c->Ni * c->Nc * 2;
+	c->Ns = c->Ni * Nc;
+	c->Nb = c->Ni * Nc * 2;
 	for(i=0; i<DIM; i++) c->Q[i] *= M_PI;
 }
 
 void InitSolution(Config c, Solution *s) {
 	int i;
 
-	for(i=0; i<c.Nc; i++) {
-		s->n[i] = s->N / c.Nc;
+	for(i=0; i<Nc; i++) {
+		s->n[i] = s->N / Nc;
 		s->m[i] = M_INIT;
 	}
 }
@@ -95,7 +98,7 @@ void CalcUFW(Config c, double *uf, lapack_complex_double *es, double *ufw) {
 		ufw[i] = 0;
 		for(j=0; j<c.Ns; j++) {
 			p = 0;
-			for(k=0; k<c.Ni; k++) p += sqrt(1.0/c.Ni) * (cos(uf[k]) - sin(uf[k]) * I) * es[ES_IDX + c.Nc*k];
+			for(k=0; k<c.Ni; k++) p += sqrt(1.0/c.Ni) * (cos(uf[k]) - sin(uf[k]) * I) * es[ES_IDX + Nc*k];
 			ufw[i] += CSQR(p);
 		}
 	}
@@ -103,16 +106,16 @@ void CalcUFW(Config c, double *uf, lapack_complex_double *es, double *ufw) {
 
 void InteractionN(Config c, Solution *s, lapack_complex_double *tb) {
 	int i, j;
-	double n[c.Nc], m[c.Nc], n_[c.Nc], m_[c.Nc];
+	double n[Nc], m[Nc], n_[Nc], m_[Nc];
 	
 	memset(n_, 0, sizeof(n_));
 	memset(m_, 0, sizeof(m_));
 
-	for(i=0; i<c.Nc; i++) {
+	for(i=0; i<Nc; i++) {
 		n[i] = s->n[i] / c.Ni;
 		m[i] = s->m[i] / c.Ni;
 
-		for(j=0; j<c.Nc; j++) {
+		for(j=0; j<Nc; j++) {
 			if(j != i) {
 				n_[i] += s->n[j] / c.Ni;
 				m_[i] += s->m[j] / c.Ni;
@@ -128,16 +131,16 @@ void InteractionN(Config c, Solution *s, lapack_complex_double *tb) {
 
 void InteractionQ(Config c, Solution *s, lapack_complex_double *tb) {
 	int i, j;
-	double n[c.Nc], m[c.Nc], n_[c.Nc], m_[c.Nc];
+	double n[Nc], m[Nc], n_[Nc], m_[Nc];
 	
 	memset(n_, 0, sizeof(n_));
 	memset(m_, 0, sizeof(m_));
 
-	for(i=0; i<c.Nc; i++) {
+	for(i=0; i<Nc; i++) {
 		n[i] = s->n[i] / c.Ni;
 		m[i] = s->m[i] / c.Ni;
 
-		for(j=0; j<c.Nc; j++) {
+		for(j=0; j<Nc; j++) {
 			if(j != i) {
 				n_[i] += s->n[j] / c.Ni;
 				m_[i] += s->m[j] / c.Ni;
@@ -147,23 +150,23 @@ void InteractionQ(Config c, Solution *s, lapack_complex_double *tb) {
 
 	for(i=0; i<c.Nb*c.Nb; i+=c.Nb+1) tb[i] += INTER_N;
 
-	for(i=c.Nc;                 i<c.Nb*c.Nc; i+=c.Nb+1) tb[i] -= INTER_M;
-	for(i=c.Nc + (c.Nb+1)*c.Ns; i<c.Nb*c.Nb; i+=c.Nb+1) tb[i] += INTER_M;
+	for(i=Nc;                 i<c.Nb*Nc;   i+=c.Nb+1) tb[i] -= INTER_M;
+	for(i=Nc + (c.Nb+1)*c.Ns; i<c.Nb*c.Nb; i+=c.Nb+1) tb[i] += INTER_M;
 }
 
 /*
 void InteractionS(Config c, Solution *s, lapack_complex_double *tb) {
 	int i, j;
-	double n[c.Nc], m[c.Nc], n_[c.Nc], m_[c.Nc];
+	double n[Nc], m[Nc], n_[Nc], m_[Nc];
 	
 	memset(n_, 0, sizeof(n_));
 	memset(m_, 0, sizeof(m_));
 
-	for(i=0; i<c.Nc; i++) {
+	for(i=0; i<Nc; i++) {
 		n[i] = s->n[i] / c.Ni;
 		m[i] = s->m[i] / c.Ni;
 
-		for(j=0; j<c.Nc; j++) {
+		for(j=0; j<Nc; j++) {
 			if(j != i) {
 				n_[i] += s->n[j] / c.Ni;
 				m_[i] += s->m[j] / c.Ni;
@@ -173,8 +176,8 @@ void InteractionS(Config c, Solution *s, lapack_complex_double *tb) {
 
 	for(i=0; i<c.Nb*c.Nb; i+=c.Nb+1) tb[i] += INTER_N;
 
-	for(i=0;             i<c.Nb*c.Ns; i+=c.Nb+1) tb[i] -= INTER_M * pow(-1, i / (c.Nb*c.Nc));
-	for(i=(c.Nb+1)*c.Ns; i<c.Nb*c.Nb; i+=c.Nb+1) tb[i] += INTER_M * pow(-1, (i + c.Nb*c.Ns) / (c.Nb*c.Nc)) ;
+	for(i=0;             i<c.Nb*c.Ns; i+=c.Nb+1) tb[i] -= INTER_M * pow(-1, i / (c.Nb*Nc));
+	for(i=(c.Nb+1)*c.Ns; i<c.Nb*c.Nb; i+=c.Nb+1) tb[i] += INTER_M * pow(-1, (i + c.Nb*c.Ns) / (c.Nb*Nc)) ;
 }
 */
 
@@ -185,11 +188,11 @@ void BasisQ(Config c, double *uf, lapack_complex_double *es) {
 
 	for(i=0; i<c.Nb; i++) {
 		for(j=0; j<c.Ns; j++) {
-			es0[0] = sqrt(1.0/c.Ni) * (cos(uf[1]) - sin(uf[1]) * I) * (es[ES_IDX] + es[ES_IDX + c.Nc]);
-			es0[1] = sqrt(1.0/c.Ni) * (cos(uf[0]) - sin(uf[0]) * I) * (es[ES_IDX] - es[ES_IDX + c.Nc]);
+			es0[0] = sqrt(1.0/c.Ni) * (cos(uf[1]) - sin(uf[1]) * I) * (es[ES_IDX] + es[ES_IDX + Nc]);
+			es0[1] = sqrt(1.0/c.Ni) * (cos(uf[0]) - sin(uf[0]) * I) * (es[ES_IDX] - es[ES_IDX + Nc]);
 
-			es[ES_IDX]        = es0[0];
-			es[ES_IDX + c.Nc] = es0[1];
+			es[ES_IDX]      = es0[0];
+			es[ES_IDX + Nc] = es0[1];
 		}
 	}
 }
@@ -205,19 +208,20 @@ void Quadrature(Config c, Solution *s, double w, double *ev, lapack_complex_doub
 }
 
 void GenSolution(Config c, Solution *s, void (*Symmetry)(), void (*Interaction)(), void (*Basis)()) {
-	char fkn[256], fun[256], ftn[256], fsn[256];
+	char fkn[256], fun[256], ftn[256], fon[256], fsn[256];
 	sprintf(fkn, "input/kg_Nk%d.txt",     Nkg);
 	sprintf(fun, "input/ufg_Nk%d_%c.txt", Nkg, c.type[0]);
 	sprintf(ftn, "input/tbg_Nk%d_%c.bin", Nkg, c.type[0]);
+	FileName(s, "oc",  fon);
 	FileName(s, "sol", fsn);
 
 	time_t t0 = time(NULL);
 
-	FILE *fk = fopen(fkn, "r"), *fu = fopen(fun, "r"), *ft = fopen(ftn, "rb"), *fs = fopen(fsn, "w");
+	FILE *fk = fopen(fkn, "r"), *fu = fopen(fun, "r"), *ft = fopen(ftn, "rb"), *fo = fopen(fon, "w"), *fs = fopen(fsn, "wb");
 	int itr, i, j, is_cvg, one = strstr(c.type, "F") ? 1 : -1;
 	char buf[1024];
 	double tmp, w[Nkg], uf[Nkg][c.Ni], ev[Nkg][c.Nb], e_min, e_max;
-	double V = pow(2*M_PI, DIM), oc[c.Nb], oc_sum, cvg[c.Nc][CVG_MAX], avg;
+	double V = pow(2*M_PI, DIM), oc[c.Nb], oc_sum, cvg[Nc][CVG_MAX], avg;
 	double uplow = 100, dntop = -100, e = 0;
 	lapack_complex_double tb[Nkg][c.Nb*c.Nb], es[Nkg][c.Nb*c.Nb];
 
@@ -237,13 +241,13 @@ void GenSolution(Config c, Solution *s, void (*Symmetry)(), void (*Interaction)(
 	fread(tb, sizeof(tb), 1, ft);
 	fclose(ft);
 
-	for(i=0; i<c.Nc; i++) {
+	for(i=0; i<Nc; i++) {
 		for(j=0; j<CVG_MAX; j++) cvg[i][j] = 100;
 	}
 
-	fprintf(fs, "%22s", "fermi");
-	for(i=0; i<c.Nb; i++) fprintf(fs, "%20s%02d", "oc", i+1);
-	fprintf(fs, "\n");
+	fprintf(fo, "%22s", "fermi");
+	for(i=0; i<c.Nb; i++) fprintf(fo, "%20s%02d", "oc", i+1);
+	fprintf(fo, "\n");
 
 	for(itr=0; itr<ITR_MAX; itr++) {
 		e_min =  100;
@@ -281,7 +285,7 @@ void GenSolution(Config c, Solution *s, void (*Symmetry)(), void (*Interaction)(
 			}
 		}
 
-		for(i=0; i<c.Nc; i++) {
+		for(i=0; i<Nc; i++) {
 			s->n[i] = 0;
 			s->m[i] = 0;
 		}
@@ -289,22 +293,22 @@ void GenSolution(Config c, Solution *s, void (*Symmetry)(), void (*Interaction)(
 		s->ms = 0;
 
 		for(i=0; i<c.Ni; i++) {
-			for(j=0; j<c.Nc; j++) {
+			for(j=0; j<Nc; j++) {
 				s->n[j] +=  oc[OC_IDX] + oc[OC_IDX + c.Ns];
 				s->m[j] += (oc[OC_IDX] - oc[OC_IDX + c.Ns]) * pow(one, i);
 			}
 		}
-		for(i=0; i<c.Nc; i++) {
+		for(i=0; i<Nc; i++) {
 			s->ns += s->n[i];
 			s->ms += s->m[i];
 		}
 
-		fprintf(fs, "%22.16f", s->fermi);
-		for(i=0; i<c.Nb; i++) fprintf(fs, "%22.16f", oc[i]);
-		fprintf(fs, "\n");
+		fprintf(fo, "%22.16f", s->fermi);
+		for(i=0; i<c.Nb; i++) fprintf(fo, "%22.16f", oc[i]);
+		fprintf(fo, "\n");
 			
 		is_cvg = 0;
-		for(i=0; i<c.Nc; i++) {
+		for(i=0; i<Nc; i++) {
 			cvg[i][itr % CVG_MAX] = s->m[i];
 
 			avg = 0;
@@ -313,10 +317,10 @@ void GenSolution(Config c, Solution *s, void (*Symmetry)(), void (*Interaction)(
 
 			if(fabs(avg - s->m[i]) < 1e-6) is_cvg++;
 		}
-		if(is_cvg == c.Nc) break;
+		if(is_cvg == Nc) break;
 		Symmetry(s->n, s->m);
 	}
-	fclose(fs);
+	fclose(fo);
 
 	for(i=0; i<Nkg; i++) CalcGap(c, s, ev[i], es[i], &uplow, &dntop);
 	s->dntop = dntop;
@@ -325,11 +329,14 @@ void GenSolution(Config c, Solution *s, void (*Symmetry)(), void (*Interaction)(
 	for(i=0; i<Nkg; i++) CalcE(c, s, w[i], ev[i], es[i], &e);
 	s->e = e / V;
 
-	GenSolBand(c, s, Interaction, Basis);
-	GenSolDOS(c, s, EP, (double*)ev, (lapack_complex_double*)es);
+	fwrite(s, sizeof(Solution), 1, fs);
+	fclose(fs);
 
 	time_t t1 = time(NULL);
-	printf("%s(%s) : %lds\n", __func__, fsn, t1 - t0);
+	printf("%s(%s, %s) : %lds\n", __func__, fon, fsn, t1 - t0);
+
+	GenSolBand(c, s, Interaction, Basis);
+	GenSolDOS(c, s, EP, (double*)ev, (lapack_complex_double*)es);
 }
 
 void GenSolBand(Config c, Solution *s, void (*Interaction)(), void (*Basis)()) {
@@ -423,11 +430,10 @@ void GenDOS(Config c, Solution *s, char *fsn, double ep, void (*Interaction)(), 
 	sprintf(fun, "input/ufg_Nk%d_%c.txt", Nkg, c.type[0]);
 	sprintf(ftn, "input/tbg_Nk%d_%c.bin", Nkg, c.type[0]);
 
-	FILE *fk = fopen(fkn, "r"), *fu = fopen(fun, "r"), *ft = fopen(ftn, "rb"), *fs = fopen(fsn, "r");
-	int i, j, one = strstr(c.type, "F") ? 1 : -1;
+	FILE *fk = fopen(fkn, "r"), *fu = fopen(fun, "r"), *ft = fopen(ftn, "rb"), *fs = fopen(fsn, "rb");
+	int i, j;
 	char buf[1024];
 	double tmp, w[Nkg], uf[Nkg][c.Ni], ev[Nkg][c.Nb];
-	double V = pow(2*M_PI, DIM), oc[c.Nb], uplow = 100, dntop = -100, e;
 	lapack_complex_double tb[Nkg][c.Nb*c.Nb], es[Nkg][c.Nb*c.Nb];
 
 	// w
@@ -447,30 +453,8 @@ void GenDOS(Config c, Solution *s, char *fsn, double ep, void (*Interaction)(), 
 	fclose(ft);
 
 	// sol
-	fgets(buf, sizeof(buf), fs); // skip header
-	while(!feof(fs)) {
-		fscanf(fs, "%lf", &s->fermi);
-		for(i=0; i<c.Nb; i++) fscanf(fs, "%lf", &oc[i]);
-	}
+	fread(s, sizeof(Solution), 1, fs);
 	fclose(fs);
-
-	for(i=0; i<c.Nc; i++) {
-		s->n[i] = 0;
-		s->m[i] = 0;
-	}
-	s->ns = 0;
-	s->ms = 0;
-
-	for(i=0; i<c.Ni; i++) {
-		for(j=0; j<c.Nc; j++) {
-			s->n[j] +=  oc[OC_IDX] + oc[OC_IDX + c.Ns];
-			s->m[j] += (oc[OC_IDX] - oc[OC_IDX + c.Ns]) * pow(one, i);
-		}
-	}
-	for(i=0; i<c.Nc; i++) {
-		s->ns += s->n[i];
-		s->ms += s->m[i];
-	}
 
 	for(i=0; i<Nkg; i++) {
 		for(j=0; j<c.Nb*c.Nb; j++) es[i][j] = tb[i][j];
@@ -479,16 +463,6 @@ void GenDOS(Config c, Solution *s, char *fsn, double ep, void (*Interaction)(), 
 		CalcEigen(c, ev[i], es[i]);
 		Basis(c, uf[i], es[i]);
 	}
-
-	for(i=0; i<Nkg; i++) CalcGap(c, s, ev[i], es[i], &uplow, &dntop);
-	s->dntop = dntop;
-	s->gap   = uplow - dntop;
-
-	for(i=0; i<Nkg; i++) CalcE(c, s, w[i], ev[i], es[i], &e);
-	s->e = e / V;
-
-	ReplaceStr(s->runtime, strstr(s->runtime, "v"), strstr(fsn, "v"), s->runtime);
-	ReplaceStr(s->runtime, strstr(s->runtime, ".txt"), "", s->runtime);
 
 	GenSolDOS(c, s, ep, (double*)ev, (lapack_complex_double*)es);
 }

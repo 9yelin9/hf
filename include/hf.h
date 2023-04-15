@@ -6,9 +6,10 @@
 #define USE_MATH_DEFINES
 
 #define DIM  3     // dimension
-#define Nkg1 32    // num of Gauss-Legendre quadrature points in 1D
-#define Nkg  32768 // num of Gauss-Legendre quadrature points in 3D = (Nkg1)^3
-#define Nkb  1024  // num of band path points
+#define Nkg1 32    // # of Gauss-Legendre quadrature points in 1D
+#define Nkg  32768 // # of Gauss-Legendre quadrature points in 3D = (Nkg1)^3
+#define Nkb  1024  // # of band path points
+#define Nc   3     // # of orbitals per atom
 
 #define M_INIT 0.1  // initial magnetization
 
@@ -41,17 +42,18 @@ typedef struct Lattice {
 typedef struct Configure {
 	char *type;    // type of configure
 	char lat[16];     // type of lattice
-	int Ni;        // num of atoms per unit cell
-	int Nc;        // num of orbitals per atom
-	int Ns;        // num of sites = Ni * Nc
-	int Nb;        // num of bases = Ni * Nc * 2(spin up & dn)
+	int Ni;        // # of atoms per unit cell
+	int Ns;        // # of sites = Ni * Nc
+	int Nb;        // # of bases = Ni * Nc * 2(spin up & dn)
 	double Q[DIM]; // ordering vector
 } Config;
 
 typedef struct SelfConsistentSolution {
-	char *save;       // name of directory to save output
-	char *type;       // type of configure
+	int s_size; // size of solution
+
 	char runtime[16]; // runtime
+	char type[16];    // type of configure
+	char save[256];   // name of directory to save output
 
 	// input
 	double JU;  // Hund coupling over Coulomb interaction
@@ -61,8 +63,8 @@ typedef struct SelfConsistentSolution {
 	double J;   // Hund coupling
 
 	// output
-	double *n;    // occupation per orbital
-	double *m;    // magnetization per orbital
+	double n[Nc]; // occupation per orbital
+	double m[Nc]; // magnetization per orbital
 	double ns;    // sum of occupation
 	double ms;    // sum of total magnetization
 	double fermi; // Fermi level	

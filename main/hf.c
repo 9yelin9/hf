@@ -32,17 +32,12 @@ int main(int argc, char *argv[]) {
 	ReadConfig(&c);
 
 	Solution s = {
-		.save = argv[1],
-		.type = argv[2],
-
 		.JU   = atof(argv[3]),
 		.SOC  = atof(argv[4]),
 		.N    = atof(argv[5]),
 		.U    = atof(argv[6]),
 		.J    = s.JU * s.U,
 
-		.n     = calloc(sizeof(*s.n), c.Nc),
-		.m     = calloc(sizeof(*s.m), c.Nc),
 		.ns    = 100,
 		.ms    = 100,
 		.fermi = 100,
@@ -51,11 +46,9 @@ int main(int argc, char *argv[]) {
 		.e     = 100
 	};
 	sprintf(s.runtime, "v%d%d%d%d", tm->tm_mon+1, tm->tm_mday, tm->tm_hour, tm->tm_min); 
-
-	char save[1024];
-	sprintf(save, "output/%s/%s_JU%.2f_SOC%.2f", s.save, s.type, s.JU, s.SOC);
-	if(-access(save, 0)) mkdir(save, 0755);
-	s.save = save;
+	sprintf(s.type, "%s", argv[2]);
+	sprintf(s.save, "output/%s/%s_JU%.2f_SOC%.2f", argv[1], s.type, s.JU, s.SOC);
+	if(-access(s.save, 0)) mkdir(s.save, 0755);
 
 	InitSolution(c, &s);
 	if     (strstr(c.type, "1")) Init1(s.m);
@@ -103,9 +96,6 @@ int main(int argc, char *argv[]) {
 		closedir(d);
 	}
 	else GenSolution(c, &s, Symmetry, Interaction, Basis);
-
-	free(s.n);
-	free(s.m);
 
 	return 0;
 }

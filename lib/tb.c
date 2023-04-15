@@ -53,8 +53,8 @@ void FourierQ(Config c, int Nl, Lattice lat, double *k, lapack_complex_double *t
 		e  = cos(dot)    + sin(dot)    * I;
 		eQ = cos(dotQ)   + sin(dotQ)   * I;
 
-		tb0[lat.obt[i][0]-1       ][lat.obt[i][1]-1       ] += t * e;
-		tb0[lat.obt[i][0]-1 + c.Nc][lat.obt[i][1]-1 + c.Nc] += t * eQ;
+		tb0[lat.obt[i][0]-1     ][lat.obt[i][1]-1     ] += t * e;
+		tb0[lat.obt[i][0]-1 + Nc][lat.obt[i][1]-1 + Nc] += t * eQ;
 	}
 
 	for(i=0; i<c.Ns; i++) {
