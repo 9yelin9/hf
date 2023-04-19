@@ -2,7 +2,7 @@
 
 #include "hf.h"
 
-void FourierN(Config c, int Nl, Lattice lat, double *k, lapack_complex_double *tb) {
+void FourierN(Config c, int Nl, Lattice *lat, double *k, lapack_complex_double *tb) {
 	int i, j, v = 0;
 	double dot;
 	lapack_complex_double tb0[c.Nb][c.Nb], t, e;
@@ -12,13 +12,13 @@ void FourierN(Config c, int Nl, Lattice lat, double *k, lapack_complex_double *t
 	for(i=0; i<Nl; i++) {
 		dot = 0;
 		for(j=0; j<DIM; j++) {
-			dot += lat.site[i][j] * k[j];
+			dot += lat[i].site[j] * k[j];
 		}
 
-		t = lat.t[i][0] + lat.t[i][1] * I;
+		t = lat[i].t[0] + lat[i].t[1] * I;
 		e = cos(dot)    + sin(dot)    * I;
 
-		tb0[lat.obt[i][0]-1][lat.obt[i][1]-1] += t * e;
+		tb0[lat[i].obt[0]-1][lat[i].obt[1]-1] += t * e;
 	}
 
 	for(i=0; i<c.Ns; i++) {
@@ -35,7 +35,7 @@ void FourierN(Config c, int Nl, Lattice lat, double *k, lapack_complex_double *t
 	}
 }	
 
-void FourierQ(Config c, int Nl, Lattice lat, double *k, lapack_complex_double *tb) {
+void FourierQ(Config c, int Nl, Lattice *lat, double *k, lapack_complex_double *tb) {
 	int i, j, v = 0;
 	double dot, dotQ;
 	lapack_complex_double tb0[c.Nb][c.Nb], t, e, eQ;
@@ -45,16 +45,16 @@ void FourierQ(Config c, int Nl, Lattice lat, double *k, lapack_complex_double *t
 	for(i=0; i<Nl; i++) {
 		dot = dotQ = 0;
 		for(j=0; j<DIM; j++) {
-			dot  += lat.site[i][j] * (k[j]);
-			dotQ += lat.site[i][j] * (k[j] + c.Q[j]);
+			dot  += lat[i].site[j] * (k[j]);
+			dotQ += lat[i].site[j] * (k[j] + c.Q[j]);
 		}
 
-		t  = lat.t[i][0] + lat.t[i][1] * I;
+		t  = lat[i].t[0] + lat[i].t[1] * I;
 		e  = cos(dot)    + sin(dot)    * I;
 		eQ = cos(dotQ)   + sin(dotQ)   * I;
 
-		tb0[lat.obt[i][0]-1     ][lat.obt[i][1]-1     ] += t * e;
-		tb0[lat.obt[i][0]-1 + Nc][lat.obt[i][1]-1 + Nc] += t * eQ;
+		tb0[lat[i].obt[0]-1     ][lat[i].obt[1]-1     ] += t * e;
+		tb0[lat[i].obt[0]-1 + Nc][lat[i].obt[1]-1 + Nc] += t * eQ;
 	}
 
 	for(i=0; i<c.Ns; i++) {
@@ -89,18 +89,17 @@ void GenTB(Config c, char *ktype, void (*Fourier)()) {
 	// lat
 	fgets(buf, sizeof(buf), fl); // skip header
 	Nl = atoi(buf);
-	Lattice lat = {
-		.site = calloc(Nl, sizeof(*lat.site)),
-		.obt  = calloc(Nl, sizeof(*lat.obt)),
-		.t    = calloc(Nl, sizeof(*lat.t))
-	};
+	Lattice lat[Nl];
 
-	for(i=0; i<Nl; i++) fscanf(fl, "%d%d%d%d%d%lf%lf", &lat.site[i][0], &lat.site[i][1], &lat.site[i][2], &lat.obt[i][0], &lat.obt[i][1], &lat.t[i][0], &lat.t[i][1]);
+	for(i=0; i<Nl; i++) fscanf(fl, "%d%d%d%d%d%lf%lf", &lat[i].site[0], &lat[i].site[1], &lat[i].site[2], &lat[i].obt[0], &lat[i].obt[1], &lat[i].t[0], &lat[i].t[1]);
 	fclose(fl);
 	
 	// k
 	fgets(buf, sizeof(buf), fk); // skip header
-	for(i=0; i<Nk; i++) fscanf(fk, "%lf%lf%lf", &k[i][0], &k[i][1], &k[i][2]);
+	for(i=0; i<Nk; i++) {
+		fgets(buf, sizeof(buf), fk);
+		sscanf(buf, "%lf%lf%lf", &k[i][0], &k[i][1], &k[i][2]);
+	}
 	fclose(fk);
 
 	// tb
@@ -108,10 +107,6 @@ void GenTB(Config c, char *ktype, void (*Fourier)()) {
 	for(i=0; i<Nk; i++) Fourier(c, Nl, lat, k[i], tb[i]);
 	fwrite(tb, sizeof(tb), 1, ft);
 	fclose(ft);
-
-	free(lat.site);
-	free(lat.obt);
-	free(lat.t);
 
 	time_t t1 = time(NULL);
 	printf("%s(%s) : %lds\n", __func__, ftn, t1 - t0);

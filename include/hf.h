@@ -34,9 +34,9 @@
 #include <sys/stat.h>
 
 typedef struct Lattice {
-	int (*site)[DIM]; // site
-	int (*obt)[2];    // orbital
-	double (*t)[2];   // t
+	int site[DIM]; // site
+	int obt[2];    // orbital
+	double t[2];   // t
 } Lattice;
 
 typedef struct Configure {
@@ -91,8 +91,8 @@ void GenSolDOS(Config c, Solution *s, double ep, double *ev, lapack_complex_doub
 void GenDOS(Config c, Solution *s, char *fsn, double ep, void (*Interaction)(), void (*Basis)()); // generate density of states from solution
 
 // lib/tb.c
-void FourierN(Config c, int Nl, Lattice lat, double *k, lapack_complex_double *tb); // Fourier transform
-void FourierQ(Config c, int Nl, Lattice lat, double *k, lapack_complex_double *tb); // Fourier transform (Q basis)
+void FourierN(Config c, int Nl, Lattice *lat, double *k, lapack_complex_double *tb); // Fourier transform
+void FourierQ(Config c, int Nl, Lattice *lat, double *k, lapack_complex_double *tb); // Fourier transform (Q basis)
 void GenTB(Config c, char *ktype, void (*Fourier)()); // generate tight-binding Hamiltonian
 void GenTBBand(Config c); // generate band structure from tight-binding Hamiltonian
 

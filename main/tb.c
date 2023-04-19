@@ -15,7 +15,7 @@ int main(int argc, char *argv[]) {
 	int i, is_Q = 0;
 	for(i=0; i<DIM; i++) if(c.Q[i]) is_Q = 1;
 
-	void(*Fourier)(Config, int, Lattice, double*, lapack_complex_double*);
+	void(*Fourier)(Config, int, Lattice*, double*, lapack_complex_double*);
 	if(is_Q) Fourier = FourierQ;
 	else     Fourier = FourierN;
 
