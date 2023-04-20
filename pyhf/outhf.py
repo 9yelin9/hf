@@ -120,7 +120,7 @@ class OutHF:
 		tol_gap = 0.1
 		tol_m   = 0.1
 
-		save_list = ['output/%s/%s' % (self.save, s) for s in os.listdir('output/%s' % self.save) if re.search('%s\d_' % self.type[0], s)]
+		save_list = ['output/%s/%s' % (self.save, s) for s in os.listdir('output/%s' % self.save) if re.search('%s\d_JU%.2f' % (self.type[0], self.JU), s)]
 		fn_list = ['%s/band/%s' % (s, f) for s in save_list for f in os.listdir('%s/band' % s)]
 		grd_idx = GroundOnly(fn_list)
 
