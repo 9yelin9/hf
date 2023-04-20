@@ -8,13 +8,14 @@ import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
-from mod import FnDict, GroundOnly
+from .mod import FnDict, GroundOnly
 
 class OutHF:
 	def __init__(self, save, type, JU, SOC):
 		self.Nc = 3
 		self.Nb = 6 if re.search('F', type) else 12
 
+		self.save = save
 		self.type = type
 		self.JU   = float(JU)
 		self.SOC  = float(SOC)
@@ -119,7 +120,8 @@ class OutHF:
 		tol_gap = 0.1
 		tol_m   = 0.1
 
-		fn = [self.path_output+'/band/'+f for f in os.listdir(self.path_output+'/band')]
+		save_list = ['output/%s/%s' % (self.save, s) for s in os.listdir('output/%s' % self.save) if re.search('%s\d_' % self.type[0], s)]
+		fn_list = ['%s/band/%s' % (s, f) for s in save_list for f in os.listdir('%s/band' % s)]
 		grd_idx = GroundOnly(fn_list)
 
 		n_list = np.arange(0.2, 12, 0.2)
