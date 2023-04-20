@@ -125,7 +125,7 @@ class OutHF:
 		grd_idx = GroundOnly(fn_list)
 
 		n_list = np.arange(0.2, 12, 0.2)
-		u_list = np.arange(0, 8.1, 0.1)
+		u_list = np.arange(0, 8.1, 1)
 
 		mag = []
 		ins = []
@@ -140,19 +140,19 @@ class OutHF:
 		mag = np.array(mag)
 		ins = pd.DataFrame(ins, columns=['N', 'U', 'type'])
 
-		X = np.reshape(mag[:, 0], (int(self.Nb/0.2)+1, 81))
-		Y = np.reshape(mag[:, 1], (int(self.Nb/0.2)+1, 81))
-		Z = np.reshape(mag[:, 2], (int(self.Nb/0.2)+1, 81))
+		X = np.reshape(mag[:, 0], (9, int(self.Nb/0.2)+1))
+		Y = np.reshape(mag[:, 1], (9, int(self.Nb/0.2)+1))
+		Z = np.reshape(mag[:, 2], (9, int(self.Nb/0.2)+1))
 
-		fig, ax = plt.subplots(figsize=(10, 5), dpi=600)
+		fig, ax = plt.subplots(figsize=(10, 5))
 
 		#ct = ax.contour(N, U, m, levels=[tol_m], colors='w', linestyles='dotted')
 		#if abs(tol_m - 0.1) < 1e-6: ax.clabel(ct, ct.levels, inline=True, fmt='%.1f', fontsize=16)
 
 		cf = ax.contourf(X, Y, Z, levels=np.linspace(0, self.Nb/2, 10), cmap='Blues_r')
-		#cb = plt.colorbar(cf, format='%.1f')
-		#cb.set_ticks([0, self.Nb/2])
-		#cb.set_ticklabels(['0', '3'])
+		cb = plt.colorbar(cf, format='%.1f')
+		cb.set_ticks([0, self.Nb/2])
+		cb.set_ticklabels(['0', '3'])
 
 		#cb = plt.colorbar(cf, shrink=0.85, anchor=(0.00, 0.03), format='%.1f')
 		#cb.set_ticks(np.arange(0, self.Nb/2+0.1, 2))
@@ -170,31 +170,21 @@ class OutHF:
 			#print(ins_n, list(zip(list(ins_t), list(ins_u))))
 		ax.plot([np.max(X)], [np.max(Y)], alpha=1) 
 
-		ax.text(0.5, 0.75, type[0].upper(), bbox={'boxstyle':'Square', 'facecolor':'white'})
+		ax.text(0.5, 0.75, self.type[0], bbox={'boxstyle':'Square', 'facecolor':'white'})
 		ax.set_ylim(0, 8)
-		ax.set_xticks(np.arange(0, self.Nb+1, Ni))
+		ax.set_xticks(np.arange(0, self.Nb+1, 2))
 		ax.set_yticks(range(0, 9, 2))
 		ax.set_xticklabels(range(7))
 		ax.set_yticklabels(range(0, 9, 2))
 		ax.set_xlabel(r'$N$')
 		ax.set_ylabel(r'$U$', labelpad=20)
 
-		if not show_xticks:
-			ax.set_xticklabels([])
-			ax.set_xlabel('')
-		if not show_yticks:
-			ax.set_yticklabels([])
-			ax.set_ylabel('')
-
 		#ax.set_yticks(np.arange(0, max(U)+1, 1))
 		#ax.legend(bbox_to_anchor=(1.03, 1.03), frameon=False, fontsize=17)
 		#ax.set_title(r'%s-type $J/U = %.1f$' % (type[0], self.JU), loc='left', fontdict={'fontsize':'medium'})
 		#ax.set_title('%s-type' % type[0], pad=20, fontdict={'fontsize':'medium'})
-
-		if not ax:
-			fig.tight_layout()
-			fig.savefig('%s/phase_%s_%.3f.png' % (re.sub('output', 'diagram', self.path_output), type, tol_m))
-			plt.show()
+		
+		plt.show()
 
 		return cf
 
