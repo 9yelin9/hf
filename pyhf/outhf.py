@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
+from mod import FnDict, GroundOnly
+
 class OutHF:
 	def __init__(self, save, type, JU, SOC):
 		self.Nc = 3
@@ -113,31 +115,24 @@ class OutHF:
 		#fig.savefig('%s' % fname)
 		plt.show()
 
-"""
-	def ShowPhase(self, type, tol_gap=0.09, tol_m=0.1, ax=0, show_xticks=True, show_yticks=True):
-		tol_gap = float(tol_gap)
-		tol_m = float(tol_m)
+	def ShowPhase(self):
+		tol_gap = 0.1
+		tol_m   = 0.1
 
-		fn_list = [self.path_output + fn for fn in os.listdir(self.path_output) if re.match('band_%s' % type, fn)]
-		idx_list = GenGroundIdx(fn_list)
+		fn = [self.path_output+'/band/'+f for f in os.listdir(self.path_output+'/band')]
+		grd_idx = GroundOnly(fn_list)
 
-		mag = []
-		ins = []
-		
 		n_list = np.arange(0.2, 12, 0.2)
 		u_list = np.arange(0, 8.1, 0.1)
 
+		mag = []
+		ins = []
 		for u in u_list:
 			mag.append([0, u, 0])
-
-		for n in n_list:
-			for u in u_list:
-				fn = [fn_list[i] for i in idx_list if re.search('N%.1f_U%.1f'%(n, u), fn_list[i])][0]
-				fn_dict = ReadFn(fn)
-				mag.append([fn_dict['N'], fn_dict['U'], abs(fn_dict['m'])])
-				if fn_dict['gap'] > tol_gap: ins.append([fn_dict['N'], fn_dict['U'], [fn_dict['type']]])
-
-		for u in u_list:
+			for n in n_list:
+				fn = [fn_list[i] for i in grd_idx if re.search('N%.1f_U%.1f'%(n, u), fn_list[i])][0]
+				mag.append([FnDict(fn)['N'], FnDict(fn)['U'], abs(FnDict(fn)['m'])])
+				if FnDict(fn)['gap'] > tol_gap: ins.append([FnDict(fn)['N'], FnDict(fn)['U'], [FnDict(fn)['type']]])
 			mag.append([12, u, 0])
 
 		mag = np.array(mag)
@@ -147,7 +142,7 @@ class OutHF:
 		Y = np.reshape(mag[:, 1], (int(self.Nb/0.2)+1, 81))
 		Z = np.reshape(mag[:, 2], (int(self.Nb/0.2)+1, 81))
 
-		if not ax: fig, ax = plt.subplots(figsize=(10, 5), dpi=600)
+		fig, ax = plt.subplots(figsize=(10, 5), dpi=600)
 
 		#ct = ax.contour(N, U, m, levels=[tol_m], colors='w', linestyles='dotted')
 		#if abs(tol_m - 0.1) < 1e-6: ax.clabel(ct, ct.levels, inline=True, fmt='%.1f', fontsize=16)
@@ -201,6 +196,7 @@ class OutHF:
 
 		return cf
 
+"""
 	def ShowPhaseCheck(self, type1, type2):
 		fn1_list = [self.path_output + fn for fn in os.listdir(self.path_output) if re.match('band_%s' % type1, fn)]
 		fn2_list = [self.path_output + fn for fn in os.listdir(self.path_output) if re.match('band_%s' % type2, fn)]
@@ -208,7 +204,7 @@ class OutHF:
 		U_list = []
 
 		for fn in fn1_list:
-			fn_dict = ReadFn(fn)
+			fn_dict = FnDict(fn)
 			N_list.append(fn_dict['N'])
 			U_list.append(fn_dict['U'])
 
@@ -220,8 +216,8 @@ class OutHF:
 		e2 = np.zeros((len(U), len(N)))
 
 		for fn1, fn2 in zip(fn1_list, fn2_list):
-			fn1_dict = ReadFn(fn1)
-			fn2_dict = ReadFn(fn2)
+			fn1_dict = FnDict(fn1)
+			fn2_dict = FnDict(fn2)
 			m1[U.index(fn1_dict['U'])][N.index(fn1_dict['N'])] = fn1_dict['m']
 			m2[U.index(fn2_dict['U'])][N.index(fn2_dict['N'])] = fn2_dict['m']
 			e1[U.index(fn1_dict['U'])][N.index(fn1_dict['N'])] = fn1_dict['e']
