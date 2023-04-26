@@ -65,9 +65,9 @@ class OutHF:
 			axins.set_xticks([])
 			axins.set_yticks([np.min(w), 1])
 			axins.set_yticklabels([0, 1])
-			#axins.yaxis.tick_right()
 			axins.set_ylim([-0.05, 1.2])
 			axins.tick_params(axis='both', which='major', labelsize=18)
+			#axins.yaxis.tick_right()
 		else:
 			for i in range(self.Nb): ax.plot(x, data[:, i], color='tab:blue')
 		
@@ -98,7 +98,6 @@ class OutHF:
 		ax.set_ylim(e_min, e_max)
 		ax.yaxis.tick_right()
 		ax.yaxis.set_ticklabels([])
-		#ax.legend(bbox_to_anchor=(1.05, 1.03), frameon=False, labelspacing=0.1, fontsize=22)
 		ax.legend(fontsize=30, labelspacing=0.02, handletextpad=0.3, handlelength=1.0, borderpad=0.1, borderaxespad=0.1, frameon=False, loc='lower right')
 
 	def ShowBandDOS(self, N, U, ep=0.02, is_unfold=0):
@@ -111,129 +110,12 @@ class OutHF:
 		e_min, e_max, fn = self.ShowBand(N, U, ax[0], is_unfold=int(is_unfold))
 		self.ShowDOS(N, U, ax[1], e_min, e_max, ep)
 
-		print(fn)
-		fname = re.sub('output/', '', re.sub('txt', 'png', fn))
-		#fig.savefig('%s' % fname)
+		fname = self.path_save + re.sub('\S+/', '', re.sub('txt', 'png', fn))
+		fig.savefig(fname)
+		print(fname)
 		plt.show()
 
-	def ShowPhase(self):
-		tol_gap = 0.1
-		tol_m   = 0.1
-
-		save_list = ['output/%s/%s' % (self.save, s) for s in os.listdir('output/%s' % self.save) if re.search('%s\d_JU%.2f' % (self.type[0], self.JU), s)]
-		fn_list = ['%s/band/%s' % (s, f) for s in save_list for f in os.listdir('%s/band' % s)]
-		grd_idx = GroundOnly(fn_list)
-
-		n_list = np.arange(0.2, 12, 0.2)
-		u_list = np.arange(0, 8.1, 1)
-
-		mag = []
-		ins = []
-		for u in u_list:
-			mag.append([0, u, 0])
-			for n in n_list:
-				fn = [fn_list[i] for i in grd_idx if re.search('N%.1f_U%.1f'%(n, u), fn_list[i])][0]
-				mag.append([FnDict(fn)['N'], FnDict(fn)['U'], abs(FnDict(fn)['m'])])
-				if FnDict(fn)['gap'] > tol_gap: ins.append([FnDict(fn)['N'], FnDict(fn)['U'], [FnDict(fn)['type']]])
-			mag.append([12, u, 0])
-
-		mag = np.array(mag)
-		ins = pd.DataFrame(ins, columns=['N', 'U', 'type'])
-
-		X = np.reshape(mag[:, 0], (9, int(self.Nb/0.2)+1))
-		Y = np.reshape(mag[:, 1], (9, int(self.Nb/0.2)+1))
-		Z = np.reshape(mag[:, 2], (9, int(self.Nb/0.2)+1))
-
-		fig, ax = plt.subplots(figsize=(10, 5))
-
-		#ct = ax.contour(N, U, m, levels=[tol_m], colors='w', linestyles='dotted')
-		#if abs(tol_m - 0.1) < 1e-6: ax.clabel(ct, ct.levels, inline=True, fmt='%.1f', fontsize=16)
-
-		cf = ax.contourf(X, Y, Z, levels=np.linspace(0, self.Nb/2, 10), cmap='Blues_r')
-		cb = plt.colorbar(cf, format='%.1f')
-		cb.set_ticks([0, self.Nb/2])
-		cb.set_ticklabels(['0', '3'])
-
-		#cb = plt.colorbar(cf, shrink=0.85, anchor=(0.00, 0.03), format='%.1f')
-		#cb.set_ticks(np.arange(0, self.Nb/2+0.1, 2))
-		#cb.set_label(r'$m$', rotation=0, labelpad=20)
-		#cb.ax.tick_params(labelsize=18)
-
-		labels = ['_nolegend_' for _ in range(self.Nb)]
-		labels[0] = 'Insulator'
-
-		for i, ins_n in enumerate(np.unique(ins['N'])):
-			idcs = np.where(np.abs(ins['N'] - ins_n) < 1e-6)
-			ins_u = np.array(ins['U'])[idcs]
-			ins_t = np.array(ins['type'])[idcs]
-			ax.plot([ins_n, ins_n], [np.min(ins_u), np.max(ins_u)], lw=7, color='black', label=labels[i])
-			#print(ins_n, list(zip(list(ins_t), list(ins_u))))
-		ax.plot([np.max(X)], [np.max(Y)], alpha=1) 
-
-		ax.text(0.5, 0.75, self.type[0], bbox={'boxstyle':'Square', 'facecolor':'white'})
-		ax.set_ylim(0, 8)
-		ax.set_xticks(np.arange(0, self.Nb+1, 2))
-		ax.set_yticks(range(0, 9, 2))
-		ax.set_xticklabels(range(7))
-		ax.set_yticklabels(range(0, 9, 2))
-		ax.set_xlabel(r'$N$')
-		ax.set_ylabel(r'$U$', labelpad=20)
-
-		#ax.set_yticks(np.arange(0, max(U)+1, 1))
-		#ax.legend(bbox_to_anchor=(1.03, 1.03), frameon=False, fontsize=17)
-		#ax.set_title(r'%s-type $J/U = %.1f$' % (type[0], self.JU), loc='left', fontdict={'fontsize':'medium'})
-		#ax.set_title('%s-type' % type[0], pad=20, fontdict={'fontsize':'medium'})
-		
-		plt.show()
-
-		return cf
-
-"""
-	def ShowPhaseCheck(self, type1, type2):
-		fn1_list = [self.path_output + fn for fn in os.listdir(self.path_output) if re.match('band_%s' % type1, fn)]
-		fn2_list = [self.path_output + fn for fn in os.listdir(self.path_output) if re.match('band_%s' % type2, fn)]
-		N_list = []
-		U_list = []
-
-		for fn in fn1_list:
-			fn_dict = FnDict(fn)
-			N_list.append(fn_dict['N'])
-			U_list.append(fn_dict['U'])
-
-		N = sorted(list(set(N_list)))
-		U = sorted(list(set(U_list)))
-		m1 = np.zeros((len(U), len(N)))
-		m2 = np.zeros((len(U), len(N)))
-		e1 = np.zeros((len(U), len(N)))
-		e2 = np.zeros((len(U), len(N)))
-
-		for fn1, fn2 in zip(fn1_list, fn2_list):
-			fn1_dict = FnDict(fn1)
-			fn2_dict = FnDict(fn2)
-			m1[U.index(fn1_dict['U'])][N.index(fn1_dict['N'])] = fn1_dict['m']
-			m2[U.index(fn2_dict['U'])][N.index(fn2_dict['N'])] = fn2_dict['m']
-			e1[U.index(fn1_dict['U'])][N.index(fn1_dict['N'])] = fn1_dict['e']
-			e2[U.index(fn2_dict['U'])][N.index(fn2_dict['N'])] = fn2_dict['e']
-
-		s1 = []
-		s2 = []
-		for i, n in enumerate(N):
-			for j, u in enumerate(U):
-				if (m1[j][i] > 0.1) and (m2[j][i] > 0.1):
-					if e1[j][i] < e2[j][i]: s1.append([n, u])	
-					else: s2.append([n, u])
-
-		fig, ax = plt.subplots(dpi=600)
-
-		plt.grid(True, alpha=0.5, axis='x')
-		ax.scatter(np.array(s1)[:, 0], np.array(s1)[:, 1], label=type1)
-		ax.scatter(np.array(s2)[:, 0], np.array(s2)[:, 1], label=type2)
-		ax.legend()
-		ax.set_title(r'$%s$-type $J/U = %.1f$' % (type[0], self.JU), loc='left', fontdict={'fontsize':'medium'})
-		fig.tight_layout()
-		fig.savefig('%s/phasec_%s%s.pdf' % (re.sub('output', 'diagram', self.path_output), type1, type2))
-		plt.show()
-
+	"""
 	def ShowSolution(self, type, N, U):
 		N = float(N)
 		U = float(U)
@@ -273,4 +155,73 @@ class OutHF:
 		fig.tight_layout()
 		fig.savefig('%s' % (re.sub('output', 'diagram', re.sub('txt', 'pdf', fn))))
 		plt.show()
-"""
+	"""
+
+	def ShowPhase(self):
+		tol_gap = 0.1
+		tol_m   = 0.1
+
+		dN, NF = (0.1, 6) if re.search('F', self.type) else (0.2, 12)
+		n_list = np.arange(dN, NF, dN)
+
+		#dU = re.sub('dU', '', re.search('dU\d[.]\d+', self.save).group())
+		#UF = re.sub('UF', '', re.search('UF\d[.]\d+', self.save).group())
+		dU=1.0
+		UF=8
+		u_list = np.arange(0, UF+dU, dU)
+
+		save_list = ['output/%s/%s' % (self.save, s) for s in os.listdir('output/%s' % self.save) if re.search('%s\d_JU%.2f' % (self.type[0], self.JU), s)]
+		fn_list = ['%s/band/%s' % (s, f) for s in save_list for f in os.listdir('%s/band' % s)]
+		grd_idx = GroundOnly(fn_list)
+
+		mag = []
+		ins = []
+		for u in u_list:
+			mag.append([0, u, 0])
+			for n in n_list:
+				fn = [fn_list[i] for i in grd_idx if re.search('N%.1f_U%.1f'%(n, u), fn_list[i])][0]
+				mag.append([FnDict(fn)['N'], FnDict(fn)['U'], abs(FnDict(fn)['m'])])
+				if FnDict(fn)['gap'] > tol_gap: ins.append([FnDict(fn)['N'], FnDict(fn)['U'], [FnDict(fn)['type']]])
+			mag.append([NF, u, 0])
+
+		mag = np.array(mag)
+		ins = pd.DataFrame(ins, columns=['N', 'U', 'type'])
+
+		X = np.reshape(mag[:, 0], (len(u_list), len(n_list)+2))
+		Y = np.reshape(mag[:, 1], (len(u_list), len(n_list)+2))
+		Z = np.reshape(mag[:, 2], (len(u_list), len(n_list)+2))
+
+		fig, ax = plt.subplots(figsize=(10, 5))
+
+		#ct = ax.contour(N, U, m, levels=[tol_m], colors='w', linestyles='dotted')
+		#if abs(tol_m - 0.1) < 1e-6: ax.clabel(ct, ct.levels, inline=True, fmt='%.1f', fontsize=16)
+
+		cf = ax.contourf(X, Y, Z, levels=np.linspace(0, self.Nb//2, 10), cmap='Blues_r')
+		cb = plt.colorbar(cf, format='%.1f')
+		cb.set_ticks([0, self.Nb//2])
+		cb.set_ticklabels(['0', '3'])
+
+		labels = ['_nolegend_' for _ in range(self.Nb)]
+		labels[0] = 'Insulator'
+
+		for i, ins_n in enumerate(np.unique(ins['N'])):
+			idcs = np.where(np.abs(ins['N'] - ins_n) < 1e-6)
+			ins_u = np.array(ins['U'])[idcs]
+			ins_t = np.array(ins['type'])[idcs]
+			ax.plot([ins_n, ins_n], [np.min(ins_u), np.max(ins_u)], lw=7, color='black', label=labels[i])
+		ax.plot([np.max(X)], [np.max(Y)], alpha=1) 
+
+		ax.text(0.5, 0.75, self.type[0], bbox={'boxstyle':'Square', 'facecolor':'white'})
+		ax.set_ylim(0, UF)
+		ax.set_xticks(range(0, NF+1, int(dN*10)), labels=range(7))
+		ax.set_yticks(range(0, UF+1, 2))
+		ax.set_xlabel(r'$N$')
+		ax.set_ylabel(r'$U$', labelpad=20)
+
+		fname = self.path_save + 'phase.png'
+		fig.savefig(fname)
+		print(fname)
+		plt.show()
+
+		return cf
+

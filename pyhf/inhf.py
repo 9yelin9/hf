@@ -25,6 +25,8 @@ class InHF:
 			fl.write('%d\n' % f_len)
 			for line in fw:
 				if re.search(pat, line): fl.write(line)
+
+		print(fln)
 	
 	def GenLat222(self):
 		fln = '%s/lat.txt'    % self.path_input
@@ -70,6 +72,8 @@ class InHF:
 					f.write(''.join(['%5d'    % oi for oi in o]))
 					f.write(''.join(['%12.6f' % ti for ti in t]))
 					f.write('\n')
+
+		print(fsn)
 
 	def GenKB(self, ltype, Nk=1024):
 		Nk = int(Nk) - 1
@@ -124,6 +128,8 @@ class InHF:
 					f.write('\n')
 			f.write('\t'.join(['%20.16f' % (path[-1, 0, i] + (path[-1, 1, i] - path[-1, 0, i])) for i in range(self.DIM)]))
 			f.write('\n')
+
+		print(fkn)
 	
 	def GenKG(self, Nk1=32):
 		Nk1 = int(Nk1)
@@ -147,6 +153,8 @@ class InHF:
 
 				f.write(''.join(['%20.16f' % k[ii] for ii in [i0, i1, i2]]))
 				f.write('%20.16f\n' % (w[i0] * w[i1] * w[i2]))
+
+		print(fkn)
 	
 	def GenUF(self, fkn, type):	
 		ktype = re.sub('k', '', re.search('k[a-z]', fkn).group())
@@ -170,3 +178,5 @@ class InHF:
 			for ki in k:
 				f.write(''.join(['%20.16f' % np.dot(r[i], ki) for i in range(Ni)]))
 				f.write('\n')
+
+		print(fun)
