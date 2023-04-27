@@ -24,7 +24,8 @@ ts = ['F0'] + ['A0', 'A2', 'A5'] + ['C0', 'C1', 'C6'] + ['G0']
 
 for t in ts:
 	for j in js:
-		f = open('job/%s/%s_JU%.2f.sh' % (save_job, t, j), 'w')
+		fn = 'job/%s/%s_JU%.2f.sh' % (save_job, t, j)
+		f = open(fn, 'w')
 
 		for line in fd:
 			if re.search('JOB_NAME[.]log', line):
@@ -40,6 +41,7 @@ for t in ts:
 				else:       f.write('\t\t./hf/hf %s %s %.2f 0 $n $u\n\tdone\ndone\n'      % (save, t, j))
 			else: f.write(line)
 
+		print(fn)
 		f.close()
 		fd.seek(0)
 fd.close()
