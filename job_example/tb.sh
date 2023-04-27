@@ -1,7 +1,7 @@
 #!/bin/bash
 . /home/9yelin9/.bash_profile
 
-#$ -q openmp.q@phase07
+#$ -q openmp.q@phase06
 #$ -pe mpi 72
 #$ -j y
 #$ -cwd
@@ -10,10 +10,13 @@
 t0=$(date +%s.%N)
 t0_string=$(date)
 
-./hf/tb F
-./hf/tb A
-./hf/tb C
-./hf/tb G
+strain="none"
+types="F A C G"
+
+for t in $types
+do
+	./hf/tb $strain $t
+done
 
 t1=$(date +%s.%N)
 t1_string=$(date)
