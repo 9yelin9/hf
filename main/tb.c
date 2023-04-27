@@ -4,12 +4,12 @@
 
 int main(int argc, char *argv[]) {
 	if(argc < 2) {
-		printf("%s <type>\n", argv[0]);
+		printf("%s <strain> <type>\n", argv[0]);
 		exit(1);
 	}
 	omp_set_num_threads(72);
 
-	Config c = {.type = argv[1]};
+	Config c = {.strain = argv[1], .type = argv[2]};
 	ReadConfig(&c);
 
 	int i, is_Q = 0;

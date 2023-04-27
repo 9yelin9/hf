@@ -209,9 +209,9 @@ void Quadrature(Config c, Solution *s, double w, double *ev, lapack_complex_doub
 
 void GenSolution(Config c, Solution *s, void (*Symmetry)(), void (*Interaction)(), void (*Basis)()) {
 	char fkn[256], fun[256], ftn[256], fon[256], fsn[256];
-	sprintf(fkn, "input/kg_Nk%d.txt",     Nkg);
-	sprintf(fun, "input/ufg_Nk%d_%c.txt", Nkg, c.type[0]);
-	sprintf(ftn, "input/tbg_Nk%d_%c.bin", Nkg, c.type[0]);
+	sprintf(fkn, "input/%s/tb/kg_Nk%d.txt",     c.strain, Nkg);
+	sprintf(fun, "input/%s/tb/ufg_Nk%d_%c.txt", c.strain, Nkg, c.type[0]);
+	sprintf(ftn, "input/%s/tb/tbg_Nk%d_%c.bin", c.strain, Nkg, c.type[0]);
 	FileName(s, "oc",  fon);
 	FileName(s, "sol", fsn);
 
@@ -341,8 +341,8 @@ void GenSolution(Config c, Solution *s, void (*Symmetry)(), void (*Interaction)(
 
 void GenSolBand(Config c, Solution *s, void (*Interaction)(), void (*Basis)()) {
 	char fun[256], ftn[256], fbn[256];
-	sprintf(fun, "input/ufb_Nk%d_%c.txt", Nkb, c.type[0]);
-	sprintf(ftn, "input/tbb_Nk%d_%c.bin", Nkb, c.type[0]);
+	sprintf(fun, "input/%s/tb/ufb_Nk%d_%c.txt", c.strain, Nkb, c.type[0]);
+	sprintf(ftn, "input/%s/tb/tbb_Nk%d_%c.bin", c.strain, Nkb, c.type[0]);
 	FileName(s, "band", fbn);
 
 	time_t t0 = time(NULL);
@@ -426,9 +426,9 @@ void GenSolDOS(Config c, Solution *s, double ep, double *ev, lapack_complex_doub
 
 void GenDOS(Config c, Solution *s, char *fsn, double ep, void (*Interaction)(), void (*Basis)()) {
 	char fkn[256], fun[256], ftn[256];
-	sprintf(fkn, "input/kg_Nk%d.txt",     Nkg);
-	sprintf(fun, "input/ufg_Nk%d_%c.txt", Nkg, c.type[0]);
-	sprintf(ftn, "input/tbg_Nk%d_%c.bin", Nkg, c.type[0]);
+	sprintf(fkn, "input/%s/tb/kg_Nk%d.txt",     c.strain, Nkg);
+	sprintf(fun, "input/%s/tb/ufg_Nk%d_%c.txt", c.strain, Nkg, c.type[0]);
+	sprintf(ftn, "input/%s/tb/tbg_Nk%d_%c.bin", c.strain, Nkg, c.type[0]);
 
 	FILE *fk = fopen(fkn, "r"), *fu = fopen(fun, "r"), *ft = fopen(ftn, "rb"), *fs = fopen(fsn, "rb");
 	int i, j;

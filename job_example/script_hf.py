@@ -1,20 +1,17 @@
 import os
-num_thread = 1
-os.environ['OMP_NUM_THREADS'] = str(num_thread)
-os.environ['OPENBLAS_NUM_THREADS'] = str(num_thread)
-
 import re
 import argparse
 import numpy as np
 
 parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter)
+parser.add_argument('-st', '--strain', help='<strain>')
 parser.add_argument('-du', '--dU', type=float, help='<dU>')
 parser.add_argument('-uf', '--UF', type=int,   help='<UF>')
 parser.add_argument('-ep', '--EP', type=float, help='<ep>')
 args = parser.parse_args()                                                                     
 
 fd = open('job/default.txt', 'r')
-save = 'dU%.1f_UF%d' % (args.dU, args.UF)
+save = '%s_dU%.1f_UF%d' % (args.strain, args.dU, args.UF)
 os.makedirs('output/%s' % save, exist_ok=True)
 
 if args.EP: save_job = save + '_ep%.2f' % args.EP

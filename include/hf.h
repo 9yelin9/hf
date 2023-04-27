@@ -40,8 +40,9 @@ typedef struct Lattice {
 } Lattice;
 
 typedef struct Configure {
+	char *strain;  // strain
 	char *type;    // type of configure
-	char lat[16];     // type of lattice
+	char lat[16];  // type of lattice
 	int Ni;        // # of atoms per unit cell
 	int Ns;        // # of sites = Ni * Nc
 	int Nb;        // # of bases = Ni * Nc * 2(spin up & dn)

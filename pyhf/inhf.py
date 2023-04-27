@@ -5,13 +5,17 @@ import re
 import numpy as np
 
 class InHF:
-	def __init__(self):
+	def __init__(self, strain='none'):
 		self.DIM = 3
-		self.path_input = 'input'
+
+		self.strain = strain
+		self.path_input = 'input/%s' % self.strain
+		self.path_save  = '%s/tb'    % self.path_input
+		os.makedirs(self.path_save, exist_ok=True)
 	
 	def GenLat(self):
-		fwn = '%s/wannier90_hr.dat' % self.path_input
-		fln = '%s/lat.txt'          % self.path_input
+		fwn = '%s/wann/wannier90_hr.dat' % self.path_input
+		fln = '%s/lat.txt'               % self.path_save
 
 		pat_site = '[-]?\d+\s+'
 		pat_obt  = '[-]?\d+\s+'
@@ -28,9 +32,9 @@ class InHF:
 
 		print(fln)
 	
-	def GenLat222(self):
-		fln = '%s/lat.txt'    % self.path_input
-		fsn = '%s/lat222.txt' % self.path_input
+	def GenLat2(self):
+		fln = '%s/lat.txt'  % self.path_save
+		fsn = '%s/lat2.txt' % self.path_save
 
 		rule_dict = {
 			'000': 0,
@@ -78,8 +82,8 @@ class InHF:
 	def GenKB(self, ltype, Nk=1024):
 		Nk = int(Nk) - 1
 
-		fwn = '%s/wannier90.win' % self.path_input
-		fkn = '%s/kb_Nk%d.txt'   %(self.path_input, Nk+1)
+		fwn = '%s/wann/wannier90.win' % self.path_input
+		fkn = '%s/kb_Nk%d.txt'        % (self.path_save, Nk+1)
 
 		lat_dict = {
 			'sc' : [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
@@ -135,7 +139,7 @@ class InHF:
 		Nk1 = int(Nk1)
 		Nk  = Nk1 ** self.DIM
 
-		fkn = '%s/kg_Nk%d.txt' % (self.path_input, Nk)
+		fkn = '%s/kg_Nk%d.txt' % (self.path_save, Nk)
 					
 		ki = -np.pi
 		kf =  np.pi
@@ -160,9 +164,9 @@ class InHF:
 		ktype = re.sub('k', '', re.search('k[a-z]', fkn).group())
 		Nk = int(re.sub('Nk', '', re.search('Nk\d+', fkn).group()))
 
-		fkn = '%s/%s.txt'           % (self.path_input, fkn)
-		fcn = '%s/config_%s.txt'    % (self.path_input, type)
-		fun = '%s/uf%s_Nk%d_%s.txt' % (self.path_input, ktype, Nk, type)
+		fcn = 'input/config_%s.txt' % type
+		fkn = '%s/%s.txt'           % (self.path_save, fkn)
+		fun = '%s/uf%s_Nk%d_%s.txt' % (self.path_save, ktype, Nk, type)
 
 		with open(fkn, 'r') as f: k = np.genfromtxt(f, skip_header=1)[:, :self.DIM]
 		with open(fcn, 'r') as f:

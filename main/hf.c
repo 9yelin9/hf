@@ -28,7 +28,10 @@ int main(int argc, char *argv[]) {
 	time_t t = time(NULL);
 	struct tm *tm = localtime(&t);
 
-	Config c = {.type = argv[2]};
+	char strain[32];
+	strncpy(strain, argv[1], strstr(argv[1], "_") - argv[1]);
+
+	Config c = {.strain = strain, .type = argv[2]};
 	ReadConfig(&c);
 
 	Solution s = {
@@ -45,6 +48,7 @@ int main(int argc, char *argv[]) {
 		.gap   = 100,
 		.e     = 100
 	};
+
 	sprintf(s.runtime, "v%d%d%d%d", tm->tm_mon+1, tm->tm_mday, tm->tm_hour, tm->tm_min); 
 	sprintf(s.type, "%s", argv[2]);
 	sprintf(s.save, "output/%s/%s_JU%.2f_SOC%.2f", argv[1], s.type, s.JU, s.SOC);
