@@ -13,9 +13,8 @@ import matplotlib.pyplot as plt
 parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter)
 parser.add_argument('-i', '--inhf',  nargs='+', default=None, help='l  <strain>                                                  : GenLat\n'\
 																  +'l2 <strain>                                                  : GenLat222\n'\
-																  +'kb <strain> <ltype> [Nk=1024]                                : GenKB\n'\
-																  +'kg <strain> [Nk1=32]                                         : GenKG\n'\
-																  +'uf <strain> <fkn> <type>                                     : GenUF\n')
+																  +'kb <strain> <type> [Nk=1024]                                 : GenKB\n'\
+																  +'kg <strain> <type> [Nk1=32]                                  : GenKG\n')
 parser.add_argument('-o', '--outhf', nargs='+', default=None, help='b  <save> <type> <JU> <SOC> <N> <U> [eta=0.02] [is_unfold=0] : ShowBandDOS\n'\
 																  +'p  <save> <type> <JU> <SOC>                                  : ShowPhase\n')
 args = parser.parse_args()                                                                     
@@ -29,7 +28,6 @@ if args.inhf:
 	elif args.inhf[0] == 'l2': ih.GenLat2()
 	elif args.inhf[0] == 'kb': ih.GenKB(*args.inhf[2:])
 	elif args.inhf[0] == 'kg': ih.GenKG(*args.inhf[2:])
-	elif args.inhf[0] == 'uf': ih.GenUF(*args.inhf[2:])
 	sys.exit()
 
 # outhf

@@ -79,16 +79,12 @@ class InHF:
 
 		print(fsn)
 
-	def GenKB(self, ltype, Nk=1024):
+	def GenKB(self, type, Nk=1024):
 		Nk = int(Nk) - 1
 
 		fwn = '%s/wann/wannier90.win' % self.path_input
+		fpn = '%s/POSCAR'             % self.path_input
 		fkn = '%s/kb_Nk%d.txt'        % (self.path_save, Nk+1)
-
-		lat_dict = {
-			'sc' : [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
-			'fcc': [[0.5, 0, 0.5], [0.5, 0.5, 0], [0, 0.5, 0.5]],
-		}
 
 		path = []
 		path_string = []
@@ -103,12 +99,21 @@ class InHF:
 				if re.match('begin kpoint_path', line): is_path = 1
 		path = np.array(path, dtype='d')
 
-		if ltype == 'poscar':
-			pass
-		else:
-			A = np.array(lat_dict[ltype])
-			V = 2*np.pi / np.dot(A[0], np.cross(A[1], A[2]))	
-			B = [V * np.cross(A[i-2], A[i-1]) for i in range(self.DIM)]
+		"""
+		lat_dict = {
+			'sc' : [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+			'fcc': [[0.5, 0, 0.5], [0.5, 0.5, 0], [0, 0.5, 0.5]],
+		}
+
+		A = np.array(lat_dict[ltype])
+		V = 2*np.pi / np.dot(A[0], np.cross(A[1], A[2]))	
+		B = [V * np.cross(A[i-2], A[i-1]) for i in range(self.DIM)]
+		"""
+
+		with open(fpn, 'r') as f:
+			f.readline() # skip name
+			c = float(f.readline())
+			B = [c * np.fromstring(f.readline(), dtype='d', sep=' ') for _ in range(self.DIM)]
 
 		dist_double = []
 		for p in path:		
@@ -134,8 +139,9 @@ class InHF:
 			f.write('\n')
 
 		print(fkn)
+		self.GenUF(fkn, type)
 	
-	def GenKG(self, Nk1=32):
+	def GenKG(self, type, Nk1=32):
 		Nk1 = int(Nk1)
 		Nk  = Nk1 ** self.DIM
 
@@ -159,13 +165,13 @@ class InHF:
 				f.write('%20.16f\n' % (w[i0] * w[i1] * w[i2]))
 
 		print(fkn)
+		self.GenUF(fkn, type)
 	
 	def GenUF(self, fkn, type):	
 		ktype = re.sub('k', '', re.search('k[a-z]', fkn).group())
 		Nk = int(re.sub('Nk', '', re.search('Nk\d+', fkn).group()))
 
 		fcn = 'input/config_%s.txt' % type
-		fkn = '%s/%s.txt'           % (self.path_save, fkn)
 		fun = '%s/uf%s_Nk%d_%s.txt' % (self.path_save, ktype, Nk, type)
 
 		with open(fkn, 'r') as f: k = np.genfromtxt(f, skip_header=1)[:, :self.DIM]
