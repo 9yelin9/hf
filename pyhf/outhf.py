@@ -14,6 +14,7 @@ class OutHF:
 	def __init__(self, save, type, JU, SOC):
 		self.Nc = 3
 		self.Nb = 6 if re.search('F', type) else 12
+		print(save, type, JU, SOC)
 
 		self.save = save
 		self.type = type
