@@ -40,8 +40,7 @@ class OutHF:
 		N = float(N)
 		U = float(U)
 
-		print(self.path_output)
-		print(self.path_save)
+		print(os.listdir(self.path_output+'/band'))
 		fn = [self.path_output+'/band/'+f for f in os.listdir(self.path_output+'/band') if re.search('N%.1f_U%.1f' % (N, U), f)][0]
 		with open(fn, 'r') as f: data = np.genfromtxt(f, skip_header=1)
 
