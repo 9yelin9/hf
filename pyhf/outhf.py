@@ -23,8 +23,6 @@ class OutHF:
 		self.path_output = 'output/%s/%s_JU%.2f_SOC%.2f/' % (save, self.type, self.JU, self.SOC)
 		self.path_save = '%s/diagram/' % self.path_output
 		os.makedirs(self.path_save, exist_ok=True)
-		print(self.path_output)
-		print(self.path_save)
 
 		self.hsp_point = [0, 198, 396, 677, 1023]
 		self.hsp_label = [r'$\Gamma$', 'X', 'M', r'$\Gamma$', 'R']
@@ -42,6 +40,8 @@ class OutHF:
 		N = float(N)
 		U = float(U)
 
+		print(self.path_output)
+		print(self.path_save)
 		fn = [self.path_output+'/band/'+f for f in os.listdir(self.path_output+'/band') if re.search('N%.1f_U%.1f' % (N, U), f)][0]
 		with open(fn, 'r') as f: data = np.genfromtxt(f, skip_header=1)
 
