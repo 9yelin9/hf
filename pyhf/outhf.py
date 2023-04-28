@@ -14,7 +14,6 @@ class OutHF:
 	def __init__(self, save, type, JU, SOC):
 		self.Nc = 3
 		self.Nb = 6 if re.search('F', type) else 12
-		print(save, type, JU, SOC)
 
 		self.save = save
 		self.type = type
@@ -24,6 +23,8 @@ class OutHF:
 		self.path_output = 'output/%s/%s_JU%.2f_SOC%.2f/' % (save, self.type, self.JU, self.SOC)
 		self.path_save = '%s/diagram/' % self.path_output
 		os.makedirs(self.path_save, exist_ok=True)
+		print(self.path_output)
+		print(self.path_save)
 
 		self.hsp_point = [0, 198, 396, 677, 1023]
 		self.hsp_label = [r'$\Gamma$', 'X', 'M', r'$\Gamma$', 'R']
