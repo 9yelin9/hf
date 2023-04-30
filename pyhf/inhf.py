@@ -86,7 +86,10 @@ class InHF:
 		fpn = '%s/POSCAR'             % self.path_input
 		fkn = '%s/kb_Nk%d.txt'        % (self.path_save, Nk+1)
 
-		exception = ['T', 'Y']
+		# exceptions for strained BaOsO3
+		exception0 = '[Z]+'
+		exception1 = '[TY]+'
+
 		path = []
 		path_string = []
 		with open(fwn, 'r') as f:
@@ -94,13 +97,11 @@ class InHF:
 			for line in f:
 				if re.match('end kpoint_path', line): break
 				if is_path:
-					lines = line.split()
-					if re.search(''.join(exception), lines):
-						print(lines)
-					else:
+					if     re.match(exception0,  line): line = 'Z   0.0 0.0 0.5      S   0.5 0.5 0.0'
+					if not re.search(exception1, line):
+						lines = line.split()
 						path.append([lines[1:self.DIM+1], lines[self.DIM+2:]])
 						path_string.append([lines[0], lines[self.DIM+1]])
-				# T-Y path 삭제
 				if re.match('begin kpoint_path', line): is_path = 1
 		path = np.array(path, dtype='d')
 
