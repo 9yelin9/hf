@@ -16,6 +16,7 @@ parser.add_argument('-i', '--inhf',  nargs='+', default=None, help='l  <strain> 
 																  +'kb <strain> <type> [Nk=1024]                                 : GenKB\n'\
 																  +'kg <strain> <type> [Nk1=32]                                  : GenKG\n')
 parser.add_argument('-o', '--outhf', nargs='+', default=None, help='b  <save> <type> <JU> <SOC> <N> <U> [eta=0.02] [is_unfold=0] : ShowBandDOS\n'\
+																  +'e  <save> <type> <JU> <SOC> <N>                              : ShowEnergyMag\n'\
 																  +'p  <save> <type> <JU> <SOC>                                  : ShowPhase\n')
 args = parser.parse_args()                                                                     
 
@@ -36,5 +37,6 @@ if args.outhf:
 	oh = outhf.OutHF(*args.outhf[1:5])
 
 	if   args.outhf[0] == 'b': oh.ShowBandDOS(*args.outhf[5:])
+	elif args.outhf[0] == 'e': oh.ShowEnergyMag(*args.outhf[5:])
 	elif args.outhf[0] == 'p': oh.ShowPhase()
 	sys.exit()

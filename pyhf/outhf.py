@@ -115,47 +115,51 @@ class OutHF:
 		print(fname)
 		plt.show()
 
-	"""
-	def ShowSolution(self, type, N, U):
+	def ShowEnergyMag(self, N):
 		N = float(N)
-		U = float(U)
 
-		fn = [self.path_output + f for f in os.listdir(self.path_output) if re.search('sol_%s_N%.1f_U%.1f' % (type, N, U), f)][0]
+		#dU = re.sub('dU', '', re.search('dU\d[.]\d+', self.save).group())
+		#UF = re.sub('UF', '', re.search('UF\d[.]\d+', self.save).group())
+		dU = 1.0
+		UF = 8
+		u_list = np.arange(0, UF+dU, dU)
 
-		f = open(fn, 'r')
-		data = np.genfromtxt(f)
-		f.close()
+		save_list = ['output/%s/%s' % (self.save, s) for s in os.listdir('output/%s' % self.save) if re.search('%s\d_JU%.2f' % (self.type[0], self.JU), s)]
 
-		n_max = 4.2
-		m_max = 2.2
-		m_min = -2.2
+		fig, ax = plt.subplots(1, 2, figsize=(10, 5), constrained_layout=True)
 
-		fig, ax = plt.subplots(1, 2, figsize=(10, 5), dpi=600)
+		e_list = []
+		m_list = []
+		for s, mk in zip(save_list, ['s', 'o', '^']):
+			fn_list = sorted(['%s/band/%s' % (s, f) for f in os.listdir('%s/band' % s) if re.search('N%.1f_' % N, f)])
+			e, m = np.array([(FnDict(fn)['e'], FnDict(fn)['m']) for fn in fn_list]).T
 
-		for i, n in enumerate([2, 4, 6]):
-			ax[0].plot(data[:, 0], data[:, n],   lw=abs(i-4), ls=self.t2g_ls[i], marker=self.t2g_mk[i], ms=abs(n-10), color=self.t2g_color[i], label=self.t2g_label[i])
-			ax[1].plot(data[:, 0], data[:, n+1], lw=abs(i-4), ls=self.t2g_ls[i], marker=self.t2g_mk[i], ms=abs(n-10), color=self.t2g_color[i], label=self.t2g_label[i])
+			label = re.sub('_', '', re.search('%s\d_' % self.type[0], s).group())
+			ax[0].plot(u_list, e, marker=mk, ms=12, label=label)
+			ax[1].plot(u_list, m, marker=mk, ms=12, label=label)
 
-		ax[0].grid(True)
-		ax[0].set_xlabel('Iteration')
-		ax[0].set_ylabel('Occupation')
-		ax[0].set_ylim(-0.1, n_max)
-		ax[0].legend()
+			e_list.append(e)
+			m_list.append(m)
 
-		ax[1].grid(True)
-		ax[1].set_xlabel('Iteration')
-		ax[1].set_ylabel('Magnetization')
-		ax[1].set_ylim(m_min, m_max)
-		ax[1].legend()
+		m_list = [m_list[i][j] for i, j in zip(np.argmin(e_list, axis=0), range(len(u_list)))]
+		ax[1].scatter(u_list, m_list, marker='*', color='w', zorder=2)
 
-		fn_s = fn.split(sep='_')
-		fn_s = [s for s in fn_s if re.search('[a-zA-Z]+\d+[.]\d+', s)]
+		for axi in ax:
+			axi.grid(True)
+			axi.set_xticks(u_list)
+			axi.set_xlabel(r'$U$')
+		ax[0].set_ylabel(r'$E$')
+		ax[1].set_ylabel(r'$m$')
+		ax[1].yaxis.tick_right()
+		ax[1].yaxis.set_label_position('right')
 
-		ax[0].set_title(r'$%s$-type $N = %d$ $U = %.1f$ $J/U = %.1f$' % (type[0], N , U, self.JU), loc='left', fontdict={'fontsize':'medium'})
-		fig.tight_layout()
-		fig.savefig('%s' % (re.sub('output', 'diagram', re.sub('txt', 'pdf', fn))))
+		ax[0].set_title(r'$N$ = %.1f' % N, loc='left', fontsize='small')
+		ax[0].legend(fontsize='small', labelspacing=0.02, handletextpad=0.3, handlelength=1.0, borderpad=0.2, borderaxespad=0.1)
+			
+		fname = self.path_save + 'energy_N%.1f.png' % N
+		fig.savefig(fname)
+		print(fname)
 		plt.show()
-	"""
 
 	def ShowPhase(self):
 		tol_gap = 0.1
@@ -166,30 +170,30 @@ class OutHF:
 
 		#dU = re.sub('dU', '', re.search('dU\d[.]\d+', self.save).group())
 		#UF = re.sub('UF', '', re.search('UF\d[.]\d+', self.save).group())
-		dU=1.0
-		UF=8
+		dU = 1.0
+		UF = 8
 		u_list = np.arange(0, UF+dU, dU)
 
 		save_list = ['output/%s/%s' % (self.save, s) for s in os.listdir('output/%s' % self.save) if re.search('%s\d_JU%.2f' % (self.type[0], self.JU), s)]
-		fn_list = ['%s/band/%s' % (s, f) for s in save_list for f in os.listdir('%s/band' % s)]
+		fn_list = sorted(['%s/band/%s' % (s, f) for s in save_list for f in os.listdir('%s/band' % s)])
 		grd_idx = GroundOnly(fn_list)
 
-		mag = []
+		m = []
 		ins = []
 		for u in u_list:
-			mag.append([0, u, 0])
+			m.append([0, u, 0])
 			for n in n_list:
-				fn = [fn_list[i] for i in grd_idx if re.search('N%.1f_U%.1f'%(n, u), fn_list[i])][0]
-				mag.append([FnDict(fn)['N'], FnDict(fn)['U'], abs(FnDict(fn)['m'])])
+				fn = [fn_list[i] for i in grd_idx if re.search('N%.1f_U%.1f' % (n, u), fn_list[i])][0]
+				m.append([FnDict(fn)['N'], FnDict(fn)['U'], abs(FnDict(fn)['m'])])
 				if FnDict(fn)['gap'] > tol_gap: ins.append([FnDict(fn)['N'], FnDict(fn)['U'], [FnDict(fn)['type']]])
-			mag.append([NF, u, 0])
+			m.append([NF, u, 0])
 
-		mag = np.array(mag)
+		m = np.array(m)
 		ins = pd.DataFrame(ins, columns=['N', 'U', 'type'])
 
-		X = np.reshape(mag[:, 0], (len(u_list), len(n_list)+2))
-		Y = np.reshape(mag[:, 1], (len(u_list), len(n_list)+2))
-		Z = np.reshape(mag[:, 2], (len(u_list), len(n_list)+2))
+		X = np.reshape(m[:, 0], (len(u_list), len(n_list)+2))
+		Y = np.reshape(m[:, 1], (len(u_list), len(n_list)+2))
+		Z = np.reshape(m[:, 2], (len(u_list), len(n_list)+2))
 
 		fig, ax = plt.subplots(figsize=(10, 5))
 

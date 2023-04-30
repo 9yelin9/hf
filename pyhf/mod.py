@@ -28,7 +28,7 @@ def GroundOnly(fn_list):
 
 	df = pd.DataFrame(data, columns=params)
 	df = df.sort_values(by=['JU', 'N', 'U', 'e'])
-	df = df.drop_duplicates(subset=['JU', 'N', 'U', 'type'], keep='first')
+	df = df.drop_duplicates(subset=['JU', 'N', 'U'], keep='first')
 	grd_idx = df.index.to_list()
 
 	return grd_idx
