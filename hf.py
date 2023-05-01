@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 
 parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter)
 parser.add_argument('-i', '--inhf',  nargs='+', default=None, help='l  <strain>                                                  : GenLat\n'\
-																  +'l2 <strain>                                                  : GenLat222\n'\
+																  +'l2 <strain>                                                  : GenLat2\n'\
 																  +'kg <strain> <type> [Nkg1]                                    : GenKG\n'\
 																  +'kb <strain> <type> [Nkb]                                     : GenKB\n')
 parser.add_argument('-o', '--outhf', nargs='+', default=None, help='b  <save> <type> <JU> <SOC> <N> <U> [eta=0.02] [is_unfold=0] : ShowBandDOS\n'\
