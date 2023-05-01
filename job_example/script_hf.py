@@ -5,17 +5,21 @@ import numpy as np
 
 parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter)
 parser.add_argument('-st', '--strain', help='<strain>')
-parser.add_argument('-du', '--dU', type=float, help='<dU>')
-parser.add_argument('-uf', '--UF', type=int,   help='<UF>')
-parser.add_argument('-ep', '--EP', type=float, help='<ep>')
+parser.add_argument('-du',  '--dU',  type=float, help='<dU>')
+parser.add_argument('-uf',  '--UF',  type=int,   help='<UF>')
+
+parser.add_argument('--band' type=int,   help='<Nkb>')
+parser.add_argument('--DOS', type=float, help='<ep>')
 args = parser.parse_args()                                                                     
 
 fd = open('job/default.txt', 'r')
 save = '%s_dU%.1f_UF%d' % (args.strain, args.dU, args.UF)
 os.makedirs('output/%s' % save, exist_ok=True)
 
-if args.EP: save_job = save + '_ep%.2f' % args.EP
-else:       save_job = save
+if   args.BAND: save_job = save + '_band_Nkb%d' % args.BAND
+elif args.DOS:  save_job = save + '_dos_ep%.2f' % args.DOS
+else:           save_job = save
+
 os.makedirs('job/%s' % save_job, exist_ok=True)
 os.makedirs('log/%s' % save_job, exist_ok=True)
 
@@ -37,8 +41,9 @@ for t in ts:
 
 				f.write('\tfor u in `seq 0 %.1f %d`\n\tdo\n' % (args.dU, args.UF))
 
-				if args.EP: f.write('\t\t./hf/hf %s %s %.2f 0 $n $u %.2f\n\tdone\ndone\n' % (save, t, j, args.EP))
-				else:       f.write('\t\t./hf/hf %s %s %.2f 0 $n $u\n\tdone\ndone\n'      % (save, t, j))
+				if   args.BAND: f.write('\t\t./hf/hf %s %s %.2f 0 $n $u %d\n\tdone\ndone\n'   % (save, t, j, args.BAND))
+				elif args.DOS:  f.write('\t\t./hf/hf %s %s %.2f 0 $n $u %.2f\n\tdone\ndone\n' % (save, t, j, args.DOS))
+				else:           f.write('\t\t./hf/hf %s %s %.2f 0 $n $u\n\tdone\ndone\n'      % (save, t, j))
 			else: f.write(line)
 
 		print(fn)
