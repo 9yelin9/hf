@@ -1,8 +1,27 @@
 # pyhf/mod.py : modules
 
 import re
+import sys
 import numpy as np
 import pandas as pd
+
+def ReadConfig(dim):
+	Nkg1 = 0
+	Nkg  = 0
+	Nkb  = 0
+
+	fn = 'input/config.txt'
+	with open(fn, 'r') as f:
+		for line in f:
+			if   re.search('Nkg1', line): Nkg1 = int(re.sub('Nkg1', '', line))
+			elif re.search('Nkb',  line): Nkb  = int(re.sub('Nkb',  '', line))
+	Nkg = Nkg1 ** dim
+
+	if not (Nkg1 or Nkg or Nkb):
+		print('Wrong %s\nNkg1 = %d, Nkg = %d, Nkb = %d' % (fn, Nkg1, Nkg, Nkb))
+		sys.exit()
+
+	return Nkg1, Nkg, Nkb
 
 def FnDict(fn):
 	fn_dict = {

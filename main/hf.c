@@ -20,7 +20,7 @@ void SymmetryG(double *n, double *m) {n[2] = n[1] = n[0]; m[2] = m[1] = m[0];}
 
 int main(int argc, char *argv[]) {
 	if(argc < 2) {
-		printf("%s <save> <type> <J/U> <SOC> <N> <U> <(dos)ep>\n", argv[0]);
+		printf("%s <save> <type> <JU> <SOC> <N> <U> [(band)Nk/(dos)ep]\n", argv[0]);
 		exit(1);
 	}
 	omp_set_num_threads(1);
@@ -83,7 +83,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	if(argv[7]) {
-		double ep = atof(argv[7]);
+		double opt = atof(argv[7]);
 
 		char dsn[256], stype[32], fsn[256];
 		sprintf(dsn, "%s/sol", s.save);
@@ -94,9 +94,13 @@ int main(int argc, char *argv[]) {
 		while((f = readdir(d)) != NULL) {
 			if(strstr(f->d_name, stype)) break;
 		}
-
 		sprintf(fsn, "%s/sol/%s", s.save, f->d_name);
-		GenDOS(c, &s, fsn, ep, Interaction, Basis);
+
+		if(opt > 1) {
+			c.Nkb = (int)opt;
+			GenBand(c, &s, fsn, Interaction, Basis);
+		}
+		else GenDOS(c, &s, fsn, opt, Interaction, Basis);
 		closedir(d);
 	}
 	else GenSolution(c, &s, Symmetry, Interaction, Basis);

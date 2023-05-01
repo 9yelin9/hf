@@ -72,7 +72,7 @@ void FourierQ(Config c, int Nl, Lattice *lat, double *k, lapack_complex_double *
 }
 
 void GenTB(Config c, char *ktype, void (*Fourier)()) {
-	int Nk = strstr(ktype, "g") ? Nkg : Nkb;
+	int Nk = strstr(ktype, "g") ? c.Nkg : c.Nkb;
 	char fln[256], fkn[256], ftn[256];
 	sprintf(fln, "input/%s/tb/%s.txt",           c.strain, c.lat);
 	sprintf(fkn, "input/%s/tb/k%s_Nk%d.txt",     c.strain, ktype, Nk);
@@ -114,15 +114,15 @@ void GenTB(Config c, char *ktype, void (*Fourier)()) {
 
 void GenTBBand(Config c) {
 	char ftn[256], fbn[256];
-	sprintf(ftn, "input/%s/tb/tbb_Nk%d_%s.bin",  c.strain, Nkb, c.type);
-	sprintf(fbn, "input/%s/tb/band_Nk%d_%s.txt", c.strain, Nkb, c.type);
+	sprintf(ftn, "input/%s/tb/tbb_Nk%d_%s.bin",  c.strain, c.Nkb, c.type);
+	sprintf(fbn, "input/%s/tb/band_Nk%d_%s.txt", c.strain, c.Nkb, c.type);
 
 	time_t t0 = time(NULL);
 
 	FILE *ft = fopen(ftn, "rb"), *fb = fopen(fbn, "w");
 	int i, j;
-	double ev[Nkb][c.Nb];
-	lapack_complex_double tb[Nkb][c.Nb*c.Nb];
+	double ev[c.Nkb][c.Nb];
+	lapack_complex_double tb[c.Nkb][c.Nb*c.Nb];
 
 	// tb
 	fread(tb, sizeof(tb), 1, ft);
@@ -132,7 +132,7 @@ void GenTBBand(Config c) {
 	for(i=0; i<c.Nb; i++) fprintf(fb, "%20s%02d", "e", i+1);
 	fprintf(fb, "\n");
 
-	for(i=0; i<Nkb; i++) {
+	for(i=0; i<c.Nkb; i++) {
 		CalcEigen(c, ev[i], tb[i]);
 
 		for(j=0; j<c.Nb; j++) fprintf(fb, "%22.16f", ev[i][j]);

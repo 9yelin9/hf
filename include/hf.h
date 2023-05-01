@@ -5,11 +5,8 @@
 
 #define USE_MATH_DEFINES
 
-#define DIM  3     // dimension
-#define Nkg1 32    // # of Gauss-Legendre quadrature points in 1D
-#define Nkg  32768 // # of Gauss-Legendre quadrature points in 3D = (Nkg1)^3
-#define Nkb  1024  // # of band path points
-#define Nc   3     // # of orbitals per atom
+#define DIM 3 // dimension
+#define Nc  3 // # of orbitals per atom
 
 #define M_INIT 0.1  // initial magnetization
 
@@ -43,6 +40,9 @@ typedef struct Configure {
 	char *strain;  // strain
 	char *type;    // type of configure
 	char lat[16];  // type of lattice
+	int Nkg1;      // # of Gauss-Legendre quadrature points in 1D
+	int Nkg;       // # of Gauss-Legendre quadrature points in 3D = (Nkg1)^3
+	int Nkb;       // # of band path points
 	int Ni;        // # of atoms per unit cell
 	int Ns;        // # of sites = Ni * Nc
 	int Nb;        // # of bases = Ni * Nc * 2(spin up & dn)
@@ -89,7 +89,8 @@ void Quadrature(Config c, Solution *s, double w, double *ev, lapack_complex_doub
 void GenSolution(Config c, Solution *s, void (*Symmetry)(), void (*Interaction)(), void (*Basis)()); // generate self-consistent solution by bisection
 void GenSolBand(Config c, Solution *s, void (*Interaction)(), void (*Basis)()); // generate band structure from solution
 void GenSolDOS(Config c, Solution *s, double ep, double *ev, lapack_complex_double *es); // generate density of states from solution
-void GenDOS(Config c, Solution *s, char *fsn, double ep, void (*Interaction)(), void (*Basis)()); // generate density of states from solution
+void GenBand(Config c, Solution *s, char *fsn, void (*Interaction)(), void (*Basis)()); // generate band structure only
+void GenDOS(Config c, Solution *s, char *fsn, double ep, void (*Interaction)(), void (*Basis)()); // generate density of states only
 
 // lib/tb.c
 void FourierN(Config c, int Nl, Lattice *lat, double *k, lapack_complex_double *tb); // Fourier transform

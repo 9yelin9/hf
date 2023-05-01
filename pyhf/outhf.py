@@ -8,24 +8,26 @@ import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
-from .mod import FnDict, GroundOnly
+from .mod import ReadConfig, FnDict, GroundOnly
 
 class OutHF:
 	def __init__(self, save, type, JU, SOC):
-		self.Nc = 3
-		self.Nb = 6 if re.search('F', type) else 12
+		self.dim = 3
+		self.Nc  = 3
+
+		_, _, self.Nkb = ReadConfig(self.dim)
 
 		self.save = save
 		self.type = type
 		self.JU   = float(JU)
 		self.SOC  = float(SOC)
 
+		self.strain = self.save.split('_')[0]
+		self.Nb     = 6 if re.search('F', self.type) else 12
+
 		self.path_output = 'output/%s/%s_JU%.2f_SOC%.2f/' % (save, self.type, self.JU, self.SOC)
 		self.path_save = '%s/diagram/' % self.path_output
 		os.makedirs(self.path_save, exist_ok=True)
-
-		self.hsp_point = [0, 198, 396, 677, 1023]
-		self.hsp_label = [r'$\Gamma$', 'X', 'M', r'$\Gamma$', 'R']
 
 		self.t2g_color = ['tab:blue', 'tab:green', 'tab:red']
 		self.t2g_label = [r'$d_{xy}$', r'$d_{yz}$', r'$d_{zx}$']
@@ -36,11 +38,20 @@ class OutHF:
 		plt.rcParams.update({'font.family': 'sans-serif'})
 		plt.rcParams.update({'font.serif': 'Helvetica Neue'})
 	
-	def ShowBand(self, N, U, ax, is_unfold):
+	def ShowBand(self, N, U, ax, Nk, is_unfold):
 		N = float(N)
 		U = float(U)
 
-		fn = [self.path_output+'/band/'+f for f in os.listdir(self.path_output+'/band') if re.search('N%.1f_U%.1f' % (N, U), f)][0]
+		with open('input/%s/tb/kb_Nk%d.txt' % (self.strain, Nk), 'r') as f: hsp_info = f.readline()
+		hsp_info = hsp_info.split()
+		prev = object()
+		hsp_point = np.cumsum([int(x) for x in hsp_info if x.isdigit()])
+		hsp_point = np.insert(hsp_point, 0, 0)
+		hsp_label = [prev:=label for label in [x for x in hsp_info if x.isalpha()] if prev!=label]
+		hsp_label = [r'$\Gamma$' if label == 'G' else label for label in hsp_label]
+
+		fn = [self.path_output+'/band_Nk%d/' % Nk+f for f in os.listdir(self.path_output+'/band_Nk%d' % Nk)\
+				if re.search('N%.1f_U%.1f' % (N, U), f)][0]
 		with open(fn, 'r') as f: data = np.genfromtxt(f, skip_header=1)
 
 		x = np.arange(data.shape[0])
@@ -72,8 +83,8 @@ class OutHF:
 			for i in range(self.Nb): ax.plot(x, data[:, i], color='tab:blue')
 		
 		ax.grid(True, axis='x')
-		ax.set_xticks(self.hsp_point)
-		ax.set_xticklabels(self.hsp_label)
+		ax.set_xticks(hsp_point)
+		ax.set_xticklabels(hsp_label)
 		ax.set_ylabel(r'$E-E_{F}$')
 		ax.set_ylim(e_min, e_max)
 
@@ -83,7 +94,8 @@ class OutHF:
 		N = float(N)
 		U = float(U)
 
-		fn = [self.path_output+'/dos_ep%.2f/' % ep+f for f in os.listdir(self.path_output+'/dos_ep%.2f' % ep) if re.search('N%.1f_U%.1f' % (N, U), f)][0]
+		fn = [self.path_output+'/dos_ep%.2f/' % ep+f for f in os.listdir(self.path_output+'/dos_ep%.2f' % ep)\
+				if re.search('N%.1f_U%.1f' % (N, U), f)][0]
 		with open(fn, 'r') as f: data = np.genfromtxt(f, skip_header=1)
 
 		ax.axhline(y=0.0, ls=':', lw=2, color='dimgrey')
@@ -100,14 +112,17 @@ class OutHF:
 		ax.yaxis.set_ticklabels([])
 		ax.legend(fontsize=30, labelspacing=0.02, handletextpad=0.3, handlelength=1.0, borderpad=0.1, borderaxespad=0.1, frameon=False, loc='lower right')
 
-	def ShowBandDOS(self, N, U, ep=0.02, is_unfold=0):
+	def ShowBandDOS(self, N, U, Nk=0, ep=0.02, is_unfold=0):
 		N  = float(N)
 		U  = float(U)
 		ep = float(ep)
 
+		if Nk: Nk = int(Nk)
+		else:  Nk = self.Nkb
+
 		fig, ax = plt.subplots(1, 2, width_ratios=[3, 1], figsize=(10, 5), constrained_layout=True)
 
-		e_min, e_max, fn = self.ShowBand(N, U, ax[0], is_unfold=int(is_unfold))
+		e_min, e_max, fn = self.ShowBand(N, U, ax[0], Nk, is_unfold=int(is_unfold))
 		self.ShowDOS(N, U, ax[1], e_min, e_max, ep)
 
 		fname = self.path_save + re.sub('\S+/', '', re.sub('txt', 'png', fn))
@@ -118,20 +133,20 @@ class OutHF:
 	def ShowEnergyMag(self, N):
 		N = float(N)
 
-		#dU = re.sub('dU', '', re.search('dU\d[.]\d+', self.save).group())
-		#UF = re.sub('UF', '', re.search('UF\d[.]\d+', self.save).group())
-		dU = 1.0
-		UF = 8
+		dU = re.sub('dU', '', re.search('dU\d[.]\d+', self.save).group())
+		UF = re.sub('UF', '', re.search('UF\d[.]\d+', self.save).group())
 		u_list = np.arange(0, UF+dU, dU)
 
-		save_list = ['output/%s/%s' % (self.save, s) for s in os.listdir('output/%s' % self.save) if re.search('%s\d_JU%.2f' % (self.type[0], self.JU), s)]
+		save_list = ['output/%s/%s' % (self.save, s) for s in os.listdir('output/%s' % self.save)\
+				if re.search('%s\d_JU%.2f' % (self.type[0], self.JU), s)]
 
 		fig, ax = plt.subplots(1, 2, figsize=(10, 5), constrained_layout=True)
 
 		e_list = []
 		m_list = []
 		for s, mk in zip(save_list, ['s', 'o', '^']):
-			fn_list = sorted(['%s/band/%s' % (s, f) for f in os.listdir('%s/band' % s) if re.search('N%.1f_' % N, f)])
+			fn_list = sorted(['%s/band_Nk%d/%s' % (s, self.Nkb, f) for f in os.listdir('%s/band_Nk%d' % (s, self.Nkb))\
+					if re.search('N%.1f_' % N, f)])
 			e, m = np.array([(FnDict(fn)['e'], FnDict(fn)['m']) for fn in fn_list]).T
 
 			label = re.sub('_', '', re.search('%s\d_' % self.type[0], s).group())
@@ -168,14 +183,13 @@ class OutHF:
 		dN, NF = (0.1, 6) if re.search('F', self.type) else (0.2, 12)
 		n_list = np.arange(dN, NF, dN)
 
-		#dU = re.sub('dU', '', re.search('dU\d[.]\d+', self.save).group())
-		#UF = re.sub('UF', '', re.search('UF\d[.]\d+', self.save).group())
-		dU = 1.0
-		UF = 8
+		dU = re.sub('dU', '', re.search('dU\d[.]\d+', self.save).group())
+		UF = re.sub('UF', '', re.search('UF\d[.]\d+', self.save).group())
 		u_list = np.arange(0, UF+dU, dU)
 
-		save_list = ['output/%s/%s' % (self.save, s) for s in os.listdir('output/%s' % self.save) if re.search('%s\d_JU%.2f' % (self.type[0], self.JU), s)]
-		fn_list = sorted(['%s/band/%s' % (s, f) for s in save_list for f in os.listdir('%s/band' % s)])
+		save_list = ['output/%s/%s' % (self.save, s) for s in os.listdir('output/%s' % self.save)\
+				if re.search('%s\d_JU%.2f' % (self.type[0], self.JU), s)]
+		fn_list = sorted(['%s/band_Nk%d/%s' % (s, self.Nkb, f) for s in save_list for f in os.listdir('%s/band_Nk%d' % (s, self.Nkb))])
 		grd_idx = GroundOnly(fn_list)
 
 		m = []
