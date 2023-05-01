@@ -16,7 +16,7 @@ fd = open('job/default.txt', 'r')
 save = '%s_dU%.1f_UF%d' % (args.strain, args.dU, args.UF)
 os.makedirs('output/%s' % save, exist_ok=True)
 
-if   args.BAND: save_job = save + '_band_Nkb%d' % args.BAND
+if   args.BAND: save_job = save + '_band_Nk%d' % args.BAND
 elif args.DOS:  save_job = save + '_dos_ep%.2f' % args.DOS
 else:           save_job = save
 
