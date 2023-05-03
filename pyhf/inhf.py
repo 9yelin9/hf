@@ -4,10 +4,10 @@ import os
 import re
 import numpy as np
 
-from .mod import ReadConfig
+from .com import ReadConfig
 
 class InHF:
-	def __init__(self, strain='none'):
+	def __init__(self, strain):
 		self.dim = 3
 
 		self.Nkg1, self.Nkg, self.Nkb = ReadConfig(self.dim)
@@ -187,22 +187,25 @@ class InHF:
 		ktype = re.sub('k', '', re.search('k[a-z]', fkn).group())
 		Nk = int(re.sub('Nk', '', re.search('Nk\d+', fkn).group()))
 
-		fcn = 'input/config_%s.txt' % type
+		fcn = 'input/%s/config_%s.txt' % (self.strain, type)
 		fun = '%s/uf%s_Nk%d_%s.txt' % (self.path_save, ktype, Nk, type)
 
 		with open(fkn, 'r') as f: k = np.genfromtxt(f, skip_header=1)[:, :self.dim]
+
+		r = []
 		with open(fcn, 'r') as f:
-			r = []
+			is_unfold = 0
 			for line in f:
-				if   re.match('Ni',  line): Ni = int(line.split()[1])
-				elif re.match('Rho', line): r.append(line.split()[1:])
+				if re.match('end unfold', line): break
+				if is_unfold: r.append(line.split())
+				if re.match('begin unfold', line): is_unfold = 1
 			r = np.array(r, dtype='d')
 
 		with open(fun, 'w') as f:
 			f.write('%d\n' % Nk)
 
 			for ki in k:
-				f.write(''.join(['%20.16f' % np.dot(r[i], ki) for i in range(Ni)]))
+				f.write(''.join(['%20.16f' % np.dot(ri, ki) for ri in r]))
 				f.write('\n')
 
 		print(fun)

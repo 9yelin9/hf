@@ -1,3 +1,5 @@
+#!/home/9yelin9/.local/bin/python3
+
 import os
 num_thread = 4
 os.environ['OMP_NUM_THREADS']      = str(num_thread)
@@ -15,9 +17,9 @@ parser.add_argument('-i', '--inhf',  nargs='+', default=None, help='l  <strain> 
 																  +'l2 <strain>                                                  : GenLat2\n'\
 																  +'kg <strain> <type> [Nkg1]                                    : GenKG\n'\
 																  +'kb <strain> <type> [Nkb]                                     : GenKB\n')
-parser.add_argument('-o', '--outhf', nargs='+', default=None, help='b  <save> <type> <JU> <SOC> <N> <U> [eta=0.02] [is_unfold=0] : ShowBandDOS\n'\
-																  +'e  <save> <type> <JU> <SOC> <N>                              : ShowEnergyMag\n'\
-																  +'p  <save> <type> <JU> <SOC>                                  : ShowPhase\n')
+parser.add_argument('-o', '--outhf', nargs='+', default=None, help='b  <save> <strain> <type> <JU> <SOC> <N> <U> [eta] [is_unfold] : ShowBandDOS\n'\
+																  +'e  <save> <strain> <type> <JU> <SOC> <N>                       : ShowEnergyMag\n'\
+																  +'p  <save> <strain> <type> <JU> <SOC>                           : ShowPhase\n')
 args = parser.parse_args()                                                                     
 
 # inhf
@@ -34,9 +36,11 @@ if args.inhf:
 # outhf
 if args.outhf:
 	from pyhf import outhf
-	oh = outhf.OutHF(*args.outhf[1:5])
+	oh = outhf.OutHF(*args.outhf[1:6])
 
-	if   args.outhf[0] == 'b': oh.ShowBandDOS(*args.outhf[5:])
-	elif args.outhf[0] == 'e': oh.ShowEnergyMag(*args.outhf[5:])
+	if   args.outhf[0] == 'b': oh.ShowBandDOS(*args.outhf[6:])
+	elif args.outhf[0] == 'e': oh.ShowEnergyMag(*args.outhf[6:])
 	elif args.outhf[0] == 'p': oh.ShowPhase()
 	sys.exit()
+
+parser.print_help()

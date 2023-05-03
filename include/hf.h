@@ -8,7 +8,8 @@
 #define DIM 3 // dimension
 #define Nc  3 // # of orbitals per atom
 
-#define M_INIT 0.1  // initial magnetization
+#define M_MIN 0.1 // minimum initial magnetization
+#define M_MAX 0.5 // maximum initial magnetization
 
 #define FERMI_WIDTH 1e-4 // width of Fermi level
 #define ITR_MAX     32   // maximum iteration of bisection
@@ -40,6 +41,7 @@ typedef struct Configure {
 	char *strain;  // strain
 	char *type;    // type of configure
 	char lat[16];  // type of lattice
+	char sym[16];  // type of symmetry
 	int Nkg1;      // # of Gauss-Legendre quadrature points in 1D
 	int Nkg;       // # of Gauss-Legendre quadrature points in 3D = (Nkg1)^3
 	int Nkb;       // # of band path points
@@ -76,9 +78,7 @@ typedef struct SelfConsistentSolution {
 
 // lib/hf.c
 void FileName(Solution *s, char *ftype, char *fn); // file name
-void ReadConfig(Config *c); // read config_*.txt
 void InitSolution(Config c, Solution *s); // initialize occupation and magnetization
-void CalcEigen(Config c, double *ev, lapack_complex_double *es); // calculate eigenproblems
 void CalcGap(Config c, Solution *s, double *ev, lapack_complex_double *es, double *uplow, double *dntop); // calculate band gap 
 void CalcE(Config c, Solution *s, double w, double *ev, lapack_complex_double *es, double *e); // calculate sum of energy under dntop
 void InteractionN(Config c, Solution *s, lapack_complex_double *tb); // add interaction term
@@ -98,7 +98,9 @@ void FourierQ(Config c, int Nl, Lattice *lat, double *k, lapack_complex_double *
 void GenTB(Config c, char *ktype, void (*Fourier)()); // generate tight-binding Hamiltonian
 void GenTBBand(Config c); // generate band structure from tight-binding Hamiltonian
 
-// lib/mod.c
+// lib/com.c
+void ReadConfig(Config *c); // read config_*.txt
+void CalcEigen(Config c, double *ev, lapack_complex_double *es); // calculate eigenproblems
 void ReplaceStr(char *in, char *org, char *rep, char *out); // replace org->rep (out must be array, not pointer)
 void ShowProgress(int i, int i_max); // show progress of iteration
 void GetDimsH5(char *fn, char *dn, hsize_t *dims); // get dimenstion of hdf5 format

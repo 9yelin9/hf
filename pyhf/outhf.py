@@ -8,26 +8,26 @@ import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
-from .mod import ReadConfig, FnDict, GroundOnly
+from .com import ReadConfig, FnDict, GroundOnly
 
 class OutHF:
-	def __init__(self, save, type, JU, SOC):
+	def __init__(self, save, strain, type, JU, SOC):
 		self.dim = 3
 		self.Nc  = 3
 
 		_, _, self.Nkb = ReadConfig(self.dim)
 
-		self.save = save
-		self.type = type
-		self.JU   = float(JU)
-		self.SOC  = float(SOC)
+		self.save   = save
+		self.strain = strain
+		self.type   = type
+		self.JU     = float(JU)
+		self.SOC    = float(SOC)
 
-		self.strain = self.save.split('_')[0]
 		self.Nb     = 6 if re.search('F', self.type) else 12
 
-		self.path_output = 'output/%s/%s_JU%.2f_SOC%.2f/' % (save, self.type, self.JU, self.SOC)
+		self.path_output = 'output/%s/%s_%s_JU%.2f_SOC%.2f/' % (save, self.strain, self.type, self.JU, self.SOC)
 		self.path_save = '%s/diagram/' % self.path_output
-		os.makedirs(self.path_save, exist_ok=True)
+		if os.path.isdir(self.path_output): os.makedirs(self.path_save, exist_ok=True)
 
 		self.t2g_color = ['tab:blue', 'tab:green', 'tab:red']
 		self.t2g_label = [r'$d_{xy}$', r'$d_{yz}$', r'$d_{zx}$']

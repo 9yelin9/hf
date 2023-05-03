@@ -1,4 +1,4 @@
-# pyhf/mod.py : modules
+# pyhf/com.py : common functions
 
 import re
 import sys
@@ -10,7 +10,7 @@ def ReadConfig(dim):
 	Nkg  = 0
 	Nkb  = 0
 
-	fn = 'input/config.txt'
+	fn = 'input/config_com.txt'
 	with open(fn, 'r') as f:
 		for line in f:
 			if   re.search('Nkg1', line): Nkg1 = int(re.sub('Nkg1', '', line))

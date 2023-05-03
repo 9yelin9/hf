@@ -7,7 +7,7 @@ OMP_DIR = /opt/mpi/gcc-4.8.5/openmpi-4.1.0
 HDF_DIR = /opt/hdf5/intel-2021.4.0/1.12.0
 #CFLAGS = -g -O2 -Wall -mcmodel=medium -I../include -I$(USR_DIR)/include -I$(OMP_DIR)/include -I$(GSL_DIR)/include -I$(HDF_DIR)/include -fopenmp
 CFLAGS = -g -O2 -Wall -mcmodel=medium -I../include -I$(USR_DIR)/include -I$(OMP_DIR)/include -I$(HDF_DIR)/include -fopenmp
-OBJS = tb.o hf.o mod.o
+OBJS = tb.o hf.o com.o
 LIBS = libhf.a
 
 .PHONY: all clean dep

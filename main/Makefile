@@ -22,7 +22,7 @@ TARGETS = ../tb ../hf
 all : $(TARGETS)
 clean :
 	$(RM) *.o
-	$(RM) $(TARGET)
+	$(RM) $(TARGETS)
 dep :
 	$(CC) $(CFLAGS) -M $(OBJS:.o=.c) 
 
