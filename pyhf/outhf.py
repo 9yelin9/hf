@@ -203,7 +203,7 @@ class OutHF:
 		u_list = np.arange(0, UF+dU, dU)
 
 		save_list = ['output/%s/%s' % (self.save, s) for s in os.listdir('output/%s' % self.save)\
-				if re.search('%s\d_JU%.2f' % (self.type[0], self.JU), s)]
+				if re.search('%s_%s\d_JU%.2f' % (self.strain, self.type[0], self.JU), s)]
 		fn_list = sorted(['%s/band_Nk%d/%s' % (s, self.Nkb, f) for s in save_list for f in os.listdir('%s/band_Nk%d' % (s, self.Nkb))])
 		grd_idx = GroundOnly(fn_list)
 
