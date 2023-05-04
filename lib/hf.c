@@ -245,7 +245,7 @@ void GenSolution(Config c, Solution *s, void (*Symmetry)(), void (*Interaction)(
 		
 		s->fermi = 0.5 * (e_min + e_max);
 
-		while(fabs(s->fermi - e_max) > 1e-6) {
+		while(fabs(s->fermi - e_max) > 1e-8) {
 			memset(oc, 0, sizeof(oc));
 			oc_sum = 0;
 
@@ -256,7 +256,7 @@ void GenSolution(Config c, Solution *s, void (*Symmetry)(), void (*Interaction)(
 				oc_sum += oc[i];
 			}
 
-			if(fabs(oc_sum - c.N) < 1e-3) break;
+			if(fabs(oc_sum - c.N) < 1e-4) break;
 			else {
 				if(oc_sum < c.N) e_min = s->fermi;
 				else              e_max = s->fermi;
