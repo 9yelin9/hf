@@ -206,14 +206,14 @@ class OutHF:
 		save_list = ['output/%s/%s' % (self.save, s) for s in os.listdir('output/%s' % self.save)\
 				if re.search('%s_%s_JU%.2f' % (self.strain, pat_type, self.JU), s)]
 		fn_list = sorted(['%s/band_Nk%d/%s' % (s, self.Nkb, f) for s in save_list for f in os.listdir('%s/band_Nk%d' % (s, self.Nkb))])
-		grd_idx = GroundOnly(fn_list)
+		fn_list = GroundOnly(fn_list, n_list, u_list)
 
 		m = []
 		ins = []
 		for u in u_list:
 			m.append([0, u, 0])
 			for n in n_list:
-				fn = [fn_list[i] for i in grd_idx if re.search('N%.1f_U%.1f' % (n, u), fn_list[i])][0]
+				fn = [fn for fn in fn_list if re.search('N%.1f_U%.1f' % (n, u), fn)][0]
 				m.append([FnDict(fn)['N'], FnDict(fn)['U'], abs(FnDict(fn)['m'])])
 				if FnDict(fn)['gap'] > tol_gap: ins.append([FnDict(fn)['N'], FnDict(fn)['U'], [FnDict(fn)['type']]])
 			m.append([NF, u, 0])

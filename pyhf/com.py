@@ -38,16 +38,19 @@ def FnDict(fn):
 
 	return fn_dict
 
-def GroundOnly(fn_list):
-	params = ['type', 'JU', 'N', 'U', 'e']
+def GroundOnly(fn_list, n_list, u_list):
+	params = ['type', 'N', 'U', 'e']
 
-	data = np.zeros(len(params))
-	for fn in fn_list: data = np.vstack((data, [FnDict(fn)[p] for p in params]))
-	data = np.delete(data, 0, axis=0)
+	grd_fn_list = []
 
-	df = pd.DataFrame(data, columns=params)
-	df = df.sort_values(by=['JU', 'N', 'U', 'e'])
-	df = df.drop_duplicates(subset=['JU', 'N', 'U'], keep='first')
-	grd_idx = df.index.to_list()
+	for n in n_list:
+		for u in u_list:
+			e_list = []
+			grd_fn = []
+			for fn in fn_list:
+				if re.search('N%.1f_U%.1f' % (n, u), fn):
+					e_list.append(FnDict(fn)['e'])
+					grd_fn.append(fn)
+			grd_fn_list.append(grd_fn[np.argmin(e_list)])
 
-	return grd_idx
+	return grd_fn_list
