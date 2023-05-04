@@ -23,7 +23,7 @@ class OutHF:
 		self.JU     = float(JU)
 		self.SOC    = float(SOC)
 
-		self.Nb     = 6 if re.search('F', self.type) else 12
+		self.Nb = 6 if re.search('F', self.type) else 12
 
 		self.path_output = 'output/%s/%s_%s_JU%.2f_SOC%.2f/' % (save, self.strain, self.type, self.JU, self.SOC)
 		self.path_save = '%s/diagram/' % self.path_output
@@ -130,11 +130,15 @@ class OutHF:
 		print(fname)
 		plt.show()
 
-	def ShowEnergyMag(self, N):
+	def ShowEnergyMag(self, N, xmin=0, xmax=0, ymin=0, ymax=0):
 		N = float(N)
+		xmin = float(xmin)
+		xmax = float(xmax)
+		ymin = float(ymin)
+		ymax = float(ymax)
 
-		dU = re.sub('dU', '', re.search('dU\d[.]\d+', self.save).group())
-		UF = re.sub('UF', '', re.search('UF\d[.]\d+', self.save).group())
+		dU = float(re.sub('dU', '', re.search('dU\d[.]?\d*', self.save).group()))
+		UF = int(re.sub('UF', '', re.search('UF\d[.]?\d*', self.save).group()))
 		u_list = np.arange(0, UF+dU, dU)
 
 		save_list = ['output/%s/%s' % (self.save, s) for s in os.listdir('output/%s' % self.save)\
@@ -168,6 +172,12 @@ class OutHF:
 		ax[1].yaxis.tick_right()
 		ax[1].yaxis.set_label_position('right')
 
+		xlim = (xmin-0.2, xmax+0.2) if xmin+xmax > 1e-6 else (np.min(u_list)-0.5, np.max(u_list)+0.5)
+		ylim = (ymin-0.2, ymax+0.2) if ymin+ymax > 1e-6 else (np.min(m_list)-0.5, np.max(m_list)+0.5)
+		ax[0].set_xlim(xlim)
+		ax[1].set_xlim(xlim)
+		ax[1].set_ylim(ylim)
+
 		ax[0].set_title(r'$N$ = %.1f' % N, loc='left', fontsize='small')
 		ax[0].legend(fontsize='small', labelspacing=0.02, handletextpad=0.3, handlelength=1.0, borderpad=0.2, borderaxespad=0.1)
 			
@@ -176,15 +186,20 @@ class OutHF:
 		print(fname)
 		plt.show()
 
-	def ShowPhase(self):
+	def ShowPhase(self, xmin=0, xmax=0, ymin=0, ymax=0):
+		xmin = float(xmin)
+		xmax = float(xmax)
+		ymin = float(ymin)
+		ymax = float(ymax)
+
 		tol_gap = 0.1
 		tol_m   = 0.1
 
 		dN, NF = (0.1, 6) if re.search('F', self.type) else (0.2, 12)
 		n_list = np.arange(dN, NF, dN)
 
-		dU = re.sub('dU', '', re.search('dU\d[.]\d+', self.save).group())
-		UF = re.sub('UF', '', re.search('UF\d[.]\d+', self.save).group())
+		dU = float(re.sub('dU', '', re.search('dU\d[.]?\d*', self.save).group()))
+		UF = int(re.sub('UF', '', re.search('UF\d[.]?\d*', self.save).group()))
 		u_list = np.arange(0, UF+dU, dU)
 
 		save_list = ['output/%s/%s' % (self.save, s) for s in os.listdir('output/%s' % self.save)\
@@ -230,11 +245,15 @@ class OutHF:
 		ax.plot([np.max(X)], [np.max(Y)], alpha=1) 
 
 		ax.text(0.5, 0.75, self.type[0], bbox={'boxstyle':'Square', 'facecolor':'white'})
-		ax.set_ylim(0, UF)
 		ax.set_xticks(range(0, NF+1, int(dN*10)), labels=range(7))
 		ax.set_yticks(range(0, UF+1, 2))
 		ax.set_xlabel(r'$N$')
 		ax.set_ylabel(r'$U$', labelpad=20)
+
+		xlim = (xmin-0.2, xmax+0.2) if xmin+xmax > 1e-6 else (np.min(X), np.max(X))
+		ylim = (ymin-0.2, ymax+0.2) if ymin+ymax > 1e-6 else (np.min(Y), np.max(Y))
+		ax.set_xlim(xlim)
+		ax.set_ylim(ylim)
 
 		fname = self.path_save + 'phase.png'
 		fig.savefig(fname)
