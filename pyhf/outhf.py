@@ -256,7 +256,7 @@ class OutHF:
 		ax.set_xlim(xlim)
 		ax.set_ylim(ylim)
 
-		fname = self.path_save + 'phase.png'
+		fname = self.path_save + 'phase_%s.png' % self.type if specific_init else self.path_save + 'phase.png'
 		fig.savefig(fname, dpi=300)
 		print(fname)
 		plt.show()
