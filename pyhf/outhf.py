@@ -225,7 +225,7 @@ class OutHF:
 		Y = np.reshape(m[:, 1], (len(u_list), len(n_list)+2))
 		Z = np.reshape(m[:, 2], (len(u_list), len(n_list)+2))
 
-		fig, ax = plt.subplots(figsize=(10, 5))
+		fig, ax = plt.subplots(figsize=(8, 5))
 
 		#ct = ax.contour(N, U, m, levels=[tol_m], colors='w', linestyles='dotted')
 		#if abs(tol_m - 0.1) < 1e-6: ax.clabel(ct, ct.levels, inline=True, fmt='%.1f', fontsize=16)
