@@ -186,7 +186,7 @@ class OutHF:
 		print(fname)
 		plt.show()
 
-	def ShowPhase(self, xmin=0, xmax=0, ymin=0, ymax=0):
+	def ShowPhase(self, specific_init=0, xmin=0, xmax=0, ymin=0, ymax=0):
 		xmin = float(xmin)
 		xmax = float(xmax)
 		ymin = float(ymin)
@@ -202,8 +202,9 @@ class OutHF:
 		UF = int(re.sub('UF', '', re.search('UF\d[.]?\d*', self.save).group()))
 		u_list = np.arange(0, UF+dU, dU)
 
+		pat_type = self.type if specific_init else '%s\d' % self.type[0]
 		save_list = ['output/%s/%s' % (self.save, s) for s in os.listdir('output/%s' % self.save)\
-				if re.search('%s_%s\d_JU%.2f' % (self.strain, self.type[0], self.JU), s)]
+				if re.search('%s_%s_JU%.2f' % (self.strain, pat_type, self.JU), s)]
 		fn_list = sorted(['%s/band_Nk%d/%s' % (s, self.Nkb, f) for s in save_list for f in os.listdir('%s/band_Nk%d' % (s, self.Nkb))])
 		grd_idx = GroundOnly(fn_list)
 
