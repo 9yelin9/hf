@@ -243,7 +243,7 @@ class OutHF:
 			ins_u = np.array(ins['U'])[idcs]
 			ins_t = np.array(ins['type'])[idcs]
 			ax.plot([ins_n, ins_n], [np.min(ins_u), np.max(ins_u)], lw=7, color='black', label=labels[i])
-			print([(n, u, t) for n, u, z in zip(ins_n, ins_u, ins_t)]
+			print([(n, u, t) for n, u, z in zip(ins_n, ins_u, ins_t)])
 		ax.plot([np.max(X)], [np.max(Y)], alpha=1) 
 
 		ax.text(0.5, 0.75, self.type[0], bbox={'boxstyle':'Square', 'facecolor':'white'})
