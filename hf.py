@@ -17,7 +17,7 @@ parser.add_argument('-i', '--inhf',  nargs='+', default=None, help='l  <strain> 
 																  +'l2 <strain>                                                          : GenLat2\n'\
 																  +'kg <strain> <type> [Nkg1]                                            : GenKG\n'\
 																  +'kb <strain> <type> [Nkb]                                             : GenKB\n')
-parser.add_argument('-o', '--outhf', nargs='+', default=None, help='b  <save> <strain> <type> <JU> <SOC> <N> <U> [eta] [is_unfold]       : ShowBandDOS\n'\
+parser.add_argument('-o', '--outhf', nargs='+', default=None, help='b  <save> <strain> <type> <JU> <SOC> <N> <U> [Nk] [eta] [is_unfold]  : ShowBandDOS\n'\
 																  +'e  <save> <strain> <type> <JU> <SOC> <N> [xmin] [xmax] [ymin] [ymax] : ShowEnergyMag\n'\
 																  +'p  <save> <strain> <type> <JU> <SOC> [xmin] [xmax] [ymin] [ymax]     : ShowPhase\n')
 args = parser.parse_args()                                                                     
