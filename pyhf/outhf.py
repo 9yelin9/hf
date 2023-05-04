@@ -126,7 +126,7 @@ class OutHF:
 		self.ShowDOS(N, U, ax[1], e_min, e_max, ep)
 
 		fname = self.path_save + re.sub('\S+/', '', re.sub('txt', 'png', fn))
-		fig.savefig(fname)
+		fig.savefig(fname, dpi=300)
 		print(fname)
 		plt.show()
 
@@ -182,7 +182,7 @@ class OutHF:
 		ax[0].legend(fontsize='small', labelspacing=0.02, handletextpad=0.3, handlelength=1.0, borderpad=0.2, borderaxespad=0.1)
 			
 		fname = self.path_save + 'energy_N%.1f.png' % N
-		fig.savefig(fname)
+		fig.savefig(fname, dpi=300)
 		print(fname)
 		plt.show()
 
@@ -256,7 +256,7 @@ class OutHF:
 		ax.set_ylim(ylim)
 
 		fname = self.path_save + 'phase.png'
-		fig.savefig(fname)
+		fig.savefig(fname, dpi=300)
 		print(fname)
 		plt.show()
 
