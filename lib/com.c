@@ -6,7 +6,7 @@ void ReadConfig(Config *c) {
 	char fn[256];
 	sprintf(fn, "input/%s/config_%c.txt", c->strain, c->type[0]);
 
-	FILE *f0 = fopen("input/config_com.txt", "r"), *f = fopen(fn, "r");
+	FILE *f0 = fopen("input/config.txt", "r"), *f = fopen(fn, "r");
 	int i;
 	char buf[1024];
 

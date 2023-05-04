@@ -13,13 +13,14 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter)
-parser.add_argument('-i', '--inhf',  nargs='+', default=None, help='l  <strain>                                                                      : GenLat\n'\
-																  +'l2 <strain>                                                                      : GenLat2\n'\
-																  +'kg <strain> <type> [Nkg1]                                                        : GenKG\n'\
-																  +'kb <strain> <type> [Nkb]                                                         : GenKB\n')
-parser.add_argument('-o', '--outhf', nargs='+', default=None, help='b  <save> <strain> <type> <JU> <SOC> <N> <U> [Nk] [eta] [is_unfold]              : ShowBandDOS\n'\
-																  +'e  <save> <strain> <type> <JU> <SOC> <N> [xmin] [xmax] [ymin] [ymax]             : ShowEnergyMag\n'\
-																  +'p  <save> <strain> <type> <JU> <SOC> [specific_init] [xmin] [xmax] [ymin] [ymax] : ShowPhase\n')
+parser.add_argument('-i', '--inhf',  nargs='+', default=None, help='l  <strain>                                                   : GenLat\n'\
+																  +'l2 <strain>                                                   : GenLat2\n'\
+																  +'kg <strain> <type> [Nkg1]                                     : GenKG\n'\
+																  +'kb <strain> <type> [Nkb]                                      : GenKB\n')
+parser.add_argument('-o', '--outhf', nargs='+', default=None, help='b  <save> <strain> <type> <JU> <N> <U> [Nk] [eta] [is_unfold] : ShowBandDOS\n'\
+																  +'e  <save> <strain> <type> <JU> <N>                            : ShowEnergyMag\n'\
+																  +'p  <save> <strain> <type> <JU> [specific_init]                : ShowPhase\n')
+parser.add_argument('--lim', nargs='+', type=float, help='[xmin] [xmax] [ymin] [ymax]')
 args = parser.parse_args()                                                                     
 
 # inhf
@@ -36,11 +37,11 @@ if args.inhf:
 # outhf
 if args.outhf:
 	from pyhf import outhf
-	oh = outhf.OutHF(*args.outhf[1:6])
+	oh = outhf.OutHF(*args.outhf[1:5])
 
-	if   args.outhf[0] == 'b': oh.ShowBandDOS(*args.outhf[6:])
-	elif args.outhf[0] == 'e': oh.ShowEnergyMag(*args.outhf[6:])
-	elif args.outhf[0] == 'p': oh.ShowPhase(*args.outhf[6:])
+	if   args.outhf[0] == 'b': oh.ShowBandDOS(*args.outhf[5:])
+	elif args.outhf[0] == 'e': oh.ShowEnergyMag(*args.outhf[5:], *args.lim)
+	elif args.outhf[0] == 'p': oh.ShowPhase(*args.lim)
 	sys.exit()
 
 parser.print_help()

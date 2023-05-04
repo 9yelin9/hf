@@ -3,37 +3,50 @@
 #define OBT_IDX   ((i / c.Nb) % Nc)
 #define ES_IDX    (c.Nb*i + Nc*(j/Nc) + j)
 #define OC_IDX    (Nc*i + j)
-#define INTER_N   (0.5 * ((s->U) * n[OBT_IDX] + (s->U - 2*s->J) * n_[OBT_IDX] + (s->U - 3*s->J) * n_[OBT_IDX]))
-#define INTER_M   (0.5 * ((s->U) * m[OBT_IDX] + (s->U - 2*s->J) * m_[OBT_IDX] - (s->U - 3*s->J) * m_[OBT_IDX])) 
+#define INTER_N   (0.5 * ((c.U) * n[OBT_IDX] + (c.U - 2*c.J) * n_[OBT_IDX] + (c.U - 3*c.J) * n_[OBT_IDX]))
+#define INTER_M   (0.5 * ((c.U) * m[OBT_IDX] + (c.U - 2*c.J) * m_[OBT_IDX] - (c.U - 3*c.J) * m_[OBT_IDX])) 
 #define GREEN_IMG (ep / (pow(e - ev[i] + s->fermi, 2) + pow(ep, 2))) 
 
 #include "hf.h" 
 
-void FileName(Solution *s, char *ftype, char *fn) {
-	char save[1024];
-	sprintf(save, "%s/%s", s->save, ftype);
-	if(-access(save, 0)) mkdir(save, 0755);
+void FileName(Config c, Solution *s, char *ftype, char *fn) {
+	char path_save[512];
+	sprintf(path_save, "%s/%s", c.path_save, ftype);
+	if(-access(path_save, 0)) mkdir(path_save, 0755);
 
 	if(strstr(ftype, "sol")) {
-		sprintf(fn, "%s/%s_N%.1f_U%.1f_%s.bin",\
-			   	save, ftype, s->N, s->U, s->runtime);
+		sprintf(fn, "%s/N%.1f_U%.1f.bin",\
+			   	path_save, c.N, c.U);
 	}
 	else if(strstr(ftype, "oc")) {
-		sprintf(fn, "%s/%s_N%.1f_U%.1f_%s.txt",\
-			   	save, ftype, s->N, s->U, s->runtime);
+		sprintf(fn, "%s/N%.1f_U%.1f_%s.txt",\
+			   	path_save, c.N, c.U, c.runtime);
 	}
 	else {
-		sprintf(fn, "%s/%s_N%.1f_U%.1f_n%f_m%f_e%f_gap%f_fermi%f_dntop%f_%s.txt",\
-			   	save, ftype, s->N, s->U, s->ns, s->ms, s->e, s->gap, s->fermi, s->dntop, s->runtime);
+		sprintf(fn, "%s/N%.1f_U%.1f_n%f_m%f_e%f_gap%f_fermi%f_dntop%f_%s.txt",\
+			   	path_save, c.N, c.U, s->ns, s->ms, s->e, s->gap, s->fermi, s->dntop, c.runtime);
 	}
 }
 
-void InitSolution(Config c, Solution *s) {
-	int i;
+void ReadSolution(Config c, Solution *s) {
+	if (strstr(c.sol, "init")) {
+		s->n[0] = s->n[1] = s->n[2] = c.N / 3;
+		s->ns = s->ms = s->fermi = s->dntop = s->gap = s->e = 100;
 
-	for(i=0; i<Nc; i++) {
-		s->n[i] = s->N / Nc;
-		s->m[i] = M_MIN;
+		if     (strstr(c.type, "0")) {s->m[0] = M_MIN; s->m[1] = M_MIN; s->m[2] = M_MIN;} // no magnetized orbital
+		else if(strstr(c.type, "1")) {s->m[0] = M_MAX; s->m[1] = M_MIN; s->m[2] = M_MIN;} // one magnetized orbital
+		else if(strstr(c.type, "2")) {s->m[0] = M_MIN; s->m[1] = M_MAX; s->m[2] = M_MIN;}
+		else if(strstr(c.type, "3")) {s->m[0] = M_MIN; s->m[1] = M_MIN; s->m[2] = M_MAX;}
+		else if(strstr(c.type, "4")) {s->m[0] = M_MAX; s->m[1] = M_MAX; s->m[2] = M_MIN;} // two magnetized orbitals
+		else if(strstr(c.type, "5")) {s->m[0] = M_MAX; s->m[1] = M_MIN; s->m[2] = M_MAX;}
+		else if(strstr(c.type, "6")) {s->m[0] = M_MIN; s->m[1] = M_MAX; s->m[2] = M_MAX;}
+	}
+	else {
+		char fsn[256];
+		sprintf(fsn, "%s/sol/%s.bin", c.path_save, c.sol);
+		FILE *fs = fopen(fsn, "rb");
+		fread(s, sizeof(Solution), 1, fs);
+		fclose(fs);
 	}
 }
 
@@ -178,8 +191,8 @@ void GenSolution(Config c, Solution *s, void (*Symmetry)(), void (*Interaction)(
 	sprintf(fkn, "input/%s/tb/kg_Nk%d.txt",     c.strain, c.Nkg);
 	sprintf(fun, "input/%s/tb/ufg_Nk%d_%c.txt", c.strain, c.Nkg, c.type[0]);
 	sprintf(ftn, "input/%s/tb/tbg_Nk%d_%c.bin", c.strain, c.Nkg, c.type[0]);
-	FileName(s, "oc",  fon);
-	FileName(s, "sol", fsn);
+	FileName(c, s, "oc",  fon);
+	FileName(c, s, "sol", fsn);
 
 	time_t t0 = time(NULL);
 
@@ -232,7 +245,7 @@ void GenSolution(Config c, Solution *s, void (*Symmetry)(), void (*Interaction)(
 		
 		s->fermi = 0.5 * (e_min + e_max);
 
-		while(fabs(s->fermi - e_max) > 1e-8) {
+		while(fabs(s->fermi - e_max) > 1e-6) {
 			memset(oc, 0, sizeof(oc));
 			oc_sum = 0;
 
@@ -243,9 +256,9 @@ void GenSolution(Config c, Solution *s, void (*Symmetry)(), void (*Interaction)(
 				oc_sum += oc[i];
 			}
 
-			if(fabs(oc_sum - s->N) < 1e-4) break;
+			if(fabs(oc_sum - c.N) < 1e-3) break;
 			else {
-				if(oc_sum < s->N) e_min = s->fermi;
+				if(oc_sum < c.N) e_min = s->fermi;
 				else              e_max = s->fermi;
 				s->fermi = 0.5 * (e_min + e_max);
 			}
@@ -301,16 +314,54 @@ void GenSolution(Config c, Solution *s, void (*Symmetry)(), void (*Interaction)(
 	time_t t1 = time(NULL);
 	printf("%s(%s, %s) : %lds\n", __func__, fon, fsn, t1 - t0);
 
-	GenSolBand(c, s, Interaction, Basis);
 	GenSolDOS(c, s, EP, (double*)ev, (lapack_complex_double*)es);
+	GenBand(c, s, Interaction, Basis);
 }
 
-void GenSolBand(Config c, Solution *s, void (*Interaction)(), void (*Basis)()) {
+void GenSolDOS(Config c, Solution *s, double ep, double *ev, lapack_complex_double *es) {
+	char ftype[32], fdn[256];
+	sprintf(ftype, "dos_ep%.2f", ep);
+	FileName(c, s, ftype, fdn);
+
+	time_t t0 = time(NULL);
+
+	FILE *fd = fopen(fdn, "w");
+	int itv, itv_max, i, j;
+	double e, e_min, e_max, dos[c.Nb], V = pow(2*M_PI, 3)*pow(2*M_PI, 3)*M_PI; 
+	
+	itv_max = 256;
+	e_min = -8;
+	e_max =  8;
+
+	fprintf(fd, "%22s", "e");
+	for(i=0; i<c.Nb; i++) fprintf(fd, "%20s%02d", "dos", i+1);
+	fprintf(fd, "\n");
+
+	for(itv=0; itv<=itv_max; itv++) {
+		memset(dos, 0, sizeof(dos));
+		e = e_min + (e_max - e_min) * itv / itv_max;
+
+		for(i=0; i<c.Nkg*c.Nb; i++) {
+			for(j=0; j<c.Nb; j++) dos[j] += GREEN_IMG * CSQR(es[c.Nb*i + j]);
+		}
+
+		fprintf(fd, "%22.16f", e);
+		for(i=0; i<c.Nb; i++) fprintf(fd, "%22.16f", dos[i] / V);
+		fprintf(fd, "\n");
+	}
+
+	fclose(fd);
+
+	time_t t1 = time(NULL);
+	printf("%s(%s) : %lds\n", __func__, fdn, t1 - t0);
+}
+
+void GenBand(Config c, Solution *s, void (*Interaction)(), void (*Basis)()) {
 	char fun[256], ftn[256], ftype[32], fbn[256];
 	sprintf(fun, "input/%s/tb/ufb_Nk%d_%c.txt", c.strain, c.Nkb, c.type[0]);
 	sprintf(ftn, "input/%s/tb/tbb_Nk%d_%c.bin", c.strain, c.Nkb, c.type[0]);
 	sprintf(ftype, "band_Nk%d", c.Nkb);
-	FileName(s, ftype, fbn);
+	FileName(c, s, ftype, fbn);
 
 	time_t t0 = time(NULL);
 
@@ -353,59 +404,13 @@ void GenSolBand(Config c, Solution *s, void (*Interaction)(), void (*Basis)()) {
 	printf("%s(%s) : %lds\n", __func__, fbn, t1 - t0);
 }
 
-void GenSolDOS(Config c, Solution *s, double ep, double *ev, lapack_complex_double *es) {
-	char ftype[32], fdn[256];
-	sprintf(ftype, "dos_ep%.2f", ep);
-	FileName(s, ftype, fdn);
-
-	time_t t0 = time(NULL);
-
-	FILE *fd = fopen(fdn, "w");
-	int itv, itv_max, i, j;
-	double e, e_min, e_max, dos[c.Nb], V = pow(2*M_PI, 3)*pow(2*M_PI, 3)*M_PI; 
-	
-	itv_max = 256;
-	e_min = -8;
-	e_max =  8;
-
-	fprintf(fd, "%22s", "e");
-	for(i=0; i<c.Nb; i++) fprintf(fd, "%20s%02d", "dos", i+1);
-	fprintf(fd, "\n");
-
-	for(itv=0; itv<=itv_max; itv++) {
-		memset(dos, 0, sizeof(dos));
-		e = e_min + (e_max - e_min) * itv / itv_max;
-
-		for(i=0; i<c.Nkg*c.Nb; i++) {
-			for(j=0; j<c.Nb; j++) dos[j] += GREEN_IMG * CSQR(es[c.Nb*i + j]);
-		}
-
-		fprintf(fd, "%22.16f", e);
-		for(i=0; i<c.Nb; i++) fprintf(fd, "%22.16f", dos[i] / V);
-		fprintf(fd, "\n");
-	}
-
-	fclose(fd);
-
-	time_t t1 = time(NULL);
-	printf("%s(%s) : %lds\n", __func__, fdn, t1 - t0);
-}
-
-void GenBand(Config c, Solution *s, char *fsn, void (*Interaction)(), void (*Basis)()) {
-	FILE *fs = fopen(fsn, "rb");
-	fread(s, sizeof(Solution), 1, fs);
-	fclose(fs);
-
-	GenSolBand(c, s, Interaction, Basis);
-}
-
-void GenDOS(Config c, Solution *s, char *fsn, double ep, void (*Interaction)(), void (*Basis)()) {
+void GenDOS(Config c, Solution *s, double ep, void (*Interaction)(), void (*Basis)()) {
 	char fkn[256], fun[256], ftn[256];
 	sprintf(fkn, "input/%s/tb/kg_Nk%d.txt",     c.strain, c.Nkg);
 	sprintf(fun, "input/%s/tb/ufg_Nk%d_%c.txt", c.strain, c.Nkg, c.type[0]);
 	sprintf(ftn, "input/%s/tb/tbg_Nk%d_%c.bin", c.strain, c.Nkg, c.type[0]);
 
-	FILE *fk = fopen(fkn, "r"), *fu = fopen(fun, "r"), *ft = fopen(ftn, "rb"), *fs = fopen(fsn, "rb");
+	FILE *fk = fopen(fkn, "r"), *fu = fopen(fun, "r"), *ft = fopen(ftn, "rb");
 	int i, j;
 	char buf[1024];
 	double tmp, w[c.Nkg], uf[c.Nkg][c.Ni], ev[c.Nkg][c.Nb];
@@ -426,10 +431,6 @@ void GenDOS(Config c, Solution *s, char *fsn, double ep, void (*Interaction)(), 
 	// tb
 	fread(tb, sizeof(tb), 1, ft);
 	fclose(ft);
-
-	// sol
-	fread(s, sizeof(Solution), 1, fs);
-	fclose(fs);
 
 	for(i=0; i<c.Nkg; i++) {
 		for(j=0; j<c.Nb*c.Nb; j++) es[i][j] = tb[i][j];

@@ -11,7 +11,7 @@ from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 from .com import ReadConfig, FnDict, GroundOnly
 
 class OutHF:
-	def __init__(self, save, strain, type, JU, SOC):
+	def __init__(self, save, strain, type, JU):
 		self.dim = 3
 		self.Nc  = 3
 
@@ -21,11 +21,10 @@ class OutHF:
 		self.strain = strain
 		self.type   = type
 		self.JU     = float(JU)
-		self.SOC    = float(SOC)
 
 		self.Nb = 6 if re.search('F', self.type) else 12
 
-		self.path_output = 'output/%s/%s_%s_JU%.2f_SOC%.2f/' % (save, self.strain, self.type, self.JU, self.SOC)
+		self.path_output = 'output/%s/%s_%s_JU%.2f/' % (save, self.strain, self.type, self.JU)
 		self.path_save = '%s/diagram/' % self.path_output
 		if os.path.isdir(self.path_output): os.makedirs(self.path_save, exist_ok=True)
 
@@ -112,7 +111,7 @@ class OutHF:
 		ax.yaxis.set_ticklabels([])
 		ax.legend(fontsize=30, labelspacing=0.02, handletextpad=0.3, handlelength=1.0, borderpad=0.1, borderaxespad=0.1, frameon=False, loc='lower right')
 
-	def ShowBandDOS(self, N, U, Nk=0, ep=0.02, is_unfold=0):
+	def ShowBandDOS(self, N, U, Nk=0, ep=0.1, is_unfold=0):
 		N  = float(N)
 		U  = float(U)
 		ep = float(ep)
@@ -132,13 +131,9 @@ class OutHF:
 
 	def ShowEnergyMag(self, N, xmin=0, xmax=0, ymin=0, ymax=0):
 		N = float(N)
-		xmin = float(xmin)
-		xmax = float(xmax)
-		ymin = float(ymin)
-		ymax = float(ymax)
 
 		dU = float(re.sub('dU', '', re.search('dU\d[.]?\d*', self.save).group()))
-		UF = int(re.sub('UF', '', re.search('UF\d[.]?\d*', self.save).group()))
+		UF = float(re.sub('UF', '', re.search('UF\d[.]?\d*', self.save).group()))
 		u_list = np.arange(0, UF+dU, dU)
 
 		save_list = ['output/%s/%s' % (self.save, s) for s in os.listdir('output/%s' % self.save)\
@@ -187,11 +182,6 @@ class OutHF:
 		plt.show()
 
 	def ShowPhase(self, specific_init=0, xmin=0, xmax=0, ymin=0, ymax=0):
-		xmin = float(xmin)
-		xmax = float(xmax)
-		ymin = float(ymin)
-		ymax = float(ymax)
-
 		tol_gap = 0.1
 		tol_m   = 0.1
 
@@ -199,7 +189,7 @@ class OutHF:
 		n_list = np.arange(dN, NF, dN)
 
 		dU = float(re.sub('dU', '', re.search('dU\d[.]?\d*', self.save).group()))
-		UF = int(re.sub('UF', '', re.search('UF\d[.]?\d*', self.save).group()))
+		UF = float(re.sub('UF', '', re.search('UF\d[.]?\d*', self.save).group()))
 		u_list = np.arange(0, UF+dU, dU)
 
 		pat_type = self.type if specific_init else '%s\d' % self.type[0]
@@ -248,7 +238,7 @@ class OutHF:
 
 		ax.text(0.5, 0.75, self.type[0], bbox={'boxstyle':'Square', 'facecolor':'white'})
 		ax.set_xticks(range(0, NF+1, int(dN*10)), labels=range(7))
-		ax.set_yticks(range(0, UF+1, 2))
+		ax.set_yticks(range(0, int(UF)+1, 2))
 		ax.set_xlabel(r'$N$')
 		ax.set_ylabel(r'$U$', labelpad=20)
 
