@@ -27,11 +27,11 @@ def FnDict(fn):
 	fn_dict = {
 		'type':  re.sub('_', '', re.search('[A-Z]\d_', fn).group()),
 		'JU':    float(re.sub('JU',    '', re.search('JU\d+[.]\d+',        fn).group())),
-		'N':     float(re.sub('N_',     '', re.search('N_\d+[.]\d+',         fn).group())),
-		'U':     float(re.sub('_U',     '', re.search('_U\d+[.]\d+',         fn).group())),
-		'n':     float(re.sub('_n',     '', re.search('_n\d+[.]\d+',         fn).group())),
-		'm':     float(re.sub('_m',     '', re.search('_m[-]?\d+[.]\d+',     fn).group())),
-		'e':     float(re.sub('_e',     '', re.search('_e[-]?\d+[.]\d+',     fn).group())),
+		'N':     float(re.sub('N',     '', re.search('N\d+[.]\d+',         fn).group())),
+		'U':     float(re.sub('_U',    '', re.search('_U\d+[.]\d+',        fn).group())),
+		'n':     float(re.sub('_n',    '', re.search('_n\d+[.]\d+',        fn).group())),
+		'm':     float(re.sub('_m',    '', re.search('_m[-]?\d+[.]\d+',    fn).group())),
+		'e':     float(re.sub('_e',    '', re.search('_e[-]?\d+[.]\d+',    fn).group())),
 		'fermi': float(re.sub('fermi', '', re.search('fermi[-]?\d+[.]\d+', fn).group())),
 		'gap':   float(re.sub('gap',   '', re.search('gap[-]?\d+[.]\d+',   fn).group())),
 	}
