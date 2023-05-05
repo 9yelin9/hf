@@ -20,7 +20,7 @@ parser.add_argument('-i', '--inhf',  nargs='+', default=None, help='l  <strain> 
 parser.add_argument('-o', '--outhf', nargs='+', default=None, help='b  <save> <strain> <type> <JU> <N> <U> [Nk] [eta] [is_unfold] : ShowBandDOS\n'\
 																  +'e  <save> <strain> <type> <JU> <N>                            : ShowEnergyMag\n'\
 																  +'p  <save> <strain> <type> <JU> [specific_init]                : ShowPhase\n')
-parser.add_argument('--lim', nargs='+', type=float, help='[xmin] [xmax] [ymin] [ymax]')
+parser.add_argument('--lim', nargs='+', type=float, default=[], help='[xmin] [xmax] [ymin] [ymax]')
 args = parser.parse_args()                                                                     
 
 # inhf
