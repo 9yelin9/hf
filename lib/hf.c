@@ -259,7 +259,7 @@ void GenSolution(Config c, Solution *s, void (*Symmetry)(), void (*Interaction)(
 			if(fabs(oc_sum - c.N) < 1e-4) break;
 			else {
 				if(oc_sum < c.N) e_min = s->fermi;
-				else              e_max = s->fermi;
+				else             e_max = s->fermi;
 				s->fermi = 0.5 * (e_min + e_max);
 			}
 		}

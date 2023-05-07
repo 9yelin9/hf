@@ -17,9 +17,10 @@ parser.add_argument('-i', '--inhf',  nargs='+', default=None, help='l  <strain> 
 																  +'l2 <strain>                                                   : GenLat2\n'\
 																  +'kg <strain> <type> [Nkg1]                                     : GenKG\n'\
 																  +'kb <strain> <type> [Nkb]                                      : GenKB\n')
-parser.add_argument('-o', '--outhf', nargs='+', default=None, help='b  <save> <strain> <type> <JU> <N> <U> [Nk] [eta] [is_unfold] : ShowBandDOS\n'\
-																  +'e  <save> <strain> <type> <JU> <N>                            : ShowEnergyMag\n'\
-																  +'p  <save> <strain> <type> <JU> [specific_init]                : ShowPhase\n')
+parser.add_argument('-o', '--outhf', nargs='+', default=None, help='sb <save> <strain> <type> <JU> <N> <U> [Nk] [eta] [is_unfold] : ShowBandDOS\n'\
+																  +'pm <save> <strain> <type> <JU> <N>                            : PrintMag\n'\
+																  +'sm <save> <strain> <type> <JU> <N>                            : ShowMag\n'\
+																  +'sp <save> <strain> <type> <JU> [specific_init]                : ShowPhase\n')
 parser.add_argument('--lim', nargs='+', type=float, default=[], help='[xmin] [xmax] [ymin] [ymax]')
 args = parser.parse_args()                                                                     
 
@@ -39,9 +40,10 @@ if args.outhf:
 	from pyhf import outhf
 	oh = outhf.OutHF(*args.outhf[1:5])
 
-	if   args.outhf[0] == 'b': oh.ShowBandDOS(*args.outhf[5:])
-	elif args.outhf[0] == 'e': oh.ShowEnergyMag(*args.outhf[5:], *args.lim)
-	elif args.outhf[0] == 'p': oh.ShowPhase(*args.lim)
+	if   args.outhf[0] == 'sb': oh.ShowBandDOS(*args.outhf[5:])
+	elif args.outhf[0] == 'pm': oh.PrintMag(*args.outhf[5:], *args.lim)
+	elif args.outhf[0] == 'sm': oh.ShowMag(*args.outhf[5:], *args.lim)
+	elif args.outhf[0] == 'sp': oh.ShowPhase(*args.lim)
 	sys.exit()
 
 parser.print_help()

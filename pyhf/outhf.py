@@ -129,7 +129,35 @@ class OutHF:
 		print(fname)
 		plt.show()
 
-	def ShowEnergyMag(self, N, xmin=0, xmax=0, ymin=0, ymax=0):
+	def PrintMag(self, N):
+		N = float(N)
+
+		dU = float(re.sub('dU', '', re.search('dU\d[.]?\d*', self.save).group()))
+		UF = float(re.sub('UF', '', re.search('UF\d[.]?\d*', self.save).group()))
+		u_list = np.arange(0, UF+dU, dU)
+
+		save_list = ['output/%s/%s' % (self.save, s) for s in os.listdir('output/%s' % self.save)\
+				if re.search('%s_%s\d_JU%.2f' % (self.strain, self.type[0], self.JU), s)]
+
+		e_list = []
+		m_list = []
+		for s, mk in zip(save_list, ['s', 'o', '^']):
+			fn_list = sorted(['%s/band_Nk%d/%s' % (s, self.Nkb, f) for f in os.listdir('%s/band_Nk%d' % (s, self.Nkb))\
+					if re.search('N%.1f_' % N, f)])
+			e, m = np.array([(FnDict(fn)['e'], FnDict(fn)['m']) for fn in fn_list]).T
+
+			e_list.append(e)
+			m_list.append(m)
+
+		grd_idx = np.argmin(e_list, axis=0)
+
+		print('%s N=%.1f' % (self.path_output, N))
+		print('%4s%s' % ('U', ''.join(['%12s' % re.sub('_', '', re.search('[A-Z]\d_', s).group()) for s in save_list])))
+		for j, u in enumerate(u_list):
+			print('%4.1f%s' % (u, ''.join(['%12s' % (''.join(['*', '%f' % m_list[i][j]]))\
+					if i == grd_idx[j] else '%12f' % m_list[i][j] for i, _ in enumerate(save_list)])))
+
+	def ShowMag(self, N, xmin=0, xmax=0, ymin=0, ymax=0):
 		N = float(N)
 
 		dU = float(re.sub('dU', '', re.search('dU\d[.]?\d*', self.save).group()))
