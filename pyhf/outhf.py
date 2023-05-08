@@ -142,17 +142,19 @@ class OutHF:
 				if re.search('N%.1f' % N, f)])
 
 		print('%s %s %s N=%.1f' % (self.save, self.strain, self.type, N))
-		print('%4s%s' % ('U', ''.join(['%12s' % s for s in ['m_xy', 'm_yz', 'm_zx', 'm_t2g']])))
+		print('%4s%s' % ('U', ''.join(['%12s' % s for s in ['n_xy', 'n_yz', 'n_zx', 'm_xy', 'm_yz', 'm_zx', 'm_t2g']])))
 		for u, fn in zip(u_list, fn_list):
 			with open(fn, 'r') as f: oc = np.genfromtxt(f, skip_header=1)[-1, 1:]
 
+			n = np.zeros(self.Nc)
 			m = np.zeros(self.Nc+1)
 			for i in range(self.Ni):
 				for j in range(self.Nc):
+					n[j] +=  oc[self.Nc*i + j] + oc[self.Nc*i + j + self.Ns]
 					m[j] += (oc[self.Nc*i + j] - oc[self.Nc*i + j + self.Ns]) * (-1**i)
 			m[-1] = np.sum(m[:-1])
 
-			print('%4.1f%s' % (u, ''.join(['%12f' % mi for mi in m])))
+			print('%4.1f%s%s' % (u, ''.join(['%12f' % ni for ni in n], ''.join(['%12f' % mi for mi in m])))
 
 	def PrintMag(self, N):
 		N = float(N)
