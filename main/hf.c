@@ -40,7 +40,21 @@ int main(int argc, char *argv[]) {
 	if(-access(c.path_save, 0)) mkdir(c.path_save, 0755);
 
 	ReadConfig(&c);
-	ReadSolution(c, &s);
+	
+	// Solution
+	if(strstr(c.sol, "init")) {
+		s.n[0] = s.n[1] = s.n[2] = c.N / 3;
+		s.ns = s.ms = s.fermi = s.dntop = s.gap = s.e = 100;
+
+		if     (strstr(c.type, "0")) {s.m[0] = M_MIN; s.m[1] = M_MIN; s.m[2] = M_MIN;} // no magnetized orbital
+		else if(strstr(c.type, "1")) {s.m[0] = M_MAX; s.m[1] = M_MIN; s.m[2] = M_MIN;} // one magnetized orbital
+		else if(strstr(c.type, "2")) {s.m[0] = M_MIN; s.m[1] = M_MAX; s.m[2] = M_MIN;}
+		else if(strstr(c.type, "3")) {s.m[0] = M_MIN; s.m[1] = M_MIN; s.m[2] = M_MAX;}
+		else if(strstr(c.type, "4")) {s.m[0] = M_MAX; s.m[1] = M_MAX; s.m[2] = M_MIN;} // two magnetized orbitals
+		else if(strstr(c.type, "5")) {s.m[0] = M_MAX; s.m[1] = M_MIN; s.m[2] = M_MAX;}
+		else if(strstr(c.type, "6")) {s.m[0] = M_MIN; s.m[1] = M_MAX; s.m[2] = M_MAX;}
+	}
+	else ReadSolution(c, &s);
 
 	// Symmetry
 	void (*Symmetry)(double*, double*);

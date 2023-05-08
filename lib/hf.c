@@ -29,25 +29,12 @@ void FileName(Config c, Solution *s, char *ftype, char *fn) {
 }
 
 void ReadSolution(Config c, Solution *s) {
-	if (strstr(c.sol, "init")) {
-		s->n[0] = s->n[1] = s->n[2] = c.N / 3;
-		s->ns = s->ms = s->fermi = s->dntop = s->gap = s->e = 100;
+	char fsn[256];
+	sprintf(fsn, "%s/sol/%s.bin", c.path_save, c.sol);
 
-		if     (strstr(c.type, "0")) {s->m[0] = M_MIN; s->m[1] = M_MIN; s->m[2] = M_MIN;} // no magnetized orbital
-		else if(strstr(c.type, "1")) {s->m[0] = M_MAX; s->m[1] = M_MIN; s->m[2] = M_MIN;} // one magnetized orbital
-		else if(strstr(c.type, "2")) {s->m[0] = M_MIN; s->m[1] = M_MAX; s->m[2] = M_MIN;}
-		else if(strstr(c.type, "3")) {s->m[0] = M_MIN; s->m[1] = M_MIN; s->m[2] = M_MAX;}
-		else if(strstr(c.type, "4")) {s->m[0] = M_MAX; s->m[1] = M_MAX; s->m[2] = M_MIN;} // two magnetized orbitals
-		else if(strstr(c.type, "5")) {s->m[0] = M_MAX; s->m[1] = M_MIN; s->m[2] = M_MAX;}
-		else if(strstr(c.type, "6")) {s->m[0] = M_MIN; s->m[1] = M_MAX; s->m[2] = M_MAX;}
-	}
-	else {
-		char fsn[256];
-		sprintf(fsn, "%s/sol/%s.bin", c.path_save, c.sol);
-		FILE *fs = fopen(fsn, "rb");
-		fread(s, sizeof(Solution), 1, fs);
-		fclose(fs);
-	}
+	FILE *fs = fopen(fsn, "rb");
+	fread(s, sizeof(Solution), 1, fs);
+	fclose(fs);
 }
 
 void CalcGap(Config c, Solution *s, double *ev, lapack_complex_double *es, double *uplow, double *dntop) {
@@ -281,6 +268,8 @@ void GenSolution(Config c, Solution *s, void (*Symmetry)(), void (*Interaction)(
 			s->ns += s->n[i];
 			s->ms += s->m[i];
 		}
+		for(i=0; i<c.Nb; i++) printf("%f\t", oc[i]);
+		printf("\n");
 
 		fprintf(fo, "%22.16f", s->fermi);
 		for(i=0; i<c.Nb; i++) fprintf(fo, "%22.16f", oc[i]);

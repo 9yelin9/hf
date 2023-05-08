@@ -137,7 +137,7 @@ class OutHF:
 		fn_list = sorted([self.path_output+'/oc/'+f for f in os.listdir(self.path_output+'/oc')\
 				if re.search('N%.1f' % N, f)])
 
-		print('%s %s %s N=%.1f' % (self.save, self.strain, self.type, N))
+		print('%s %s %s JU=%.2f N=%.1f' % (self.save, self.strain, self.type, self.JU, N))
 		print('%4s%s' % ('U', ''.join(['%12s' % s for s in ['n_xy', 'n_yz', 'n_zx', 'm_xy', 'm_yz', 'm_zx', 'm_t2g']])))
 		for fn in fn_list:
 			with open(fn, 'r') as f: oc = np.genfromtxt(f, skip_header=1)[-1, 1:]
@@ -148,7 +148,7 @@ class OutHF:
 			for i in range(self.Ni):
 				for j in range(self.Nc):
 					n[j] +=  oc[self.Nc*i + j] + oc[self.Nc*i + j + self.Ns]
-					m[j] += (oc[self.Nc*i + j] - oc[self.Nc*i + j + self.Ns]) * (-1**i)
+					m[j] += (oc[self.Nc*i + j] - oc[self.Nc*i + j + self.Ns]) * (-1)**i
 			m[-1] = np.sum(m[:-1])
 
 			print('%4.1f%s%s' % (u, ''.join(['%12f' % ni for ni in n]), ''.join(['%12f' % mi for mi in m])))
@@ -175,7 +175,7 @@ class OutHF:
 
 		grd_idx = np.argmin(e_list, axis=0)
 
-		print('%s %s %s N=%.1f' % (self.save, self.strain, self.type[0], N))
+		print('%s %s %s JU=%.2f N=%.1f' % (self.save, self.strain, self.type[0], self.JU, N))
 		print('%4s%s' % ('U', ''.join(['%12s' % re.sub('_', '', re.search('[A-Z]\d_', s).group()) for s in save_list])))
 		for j, u in enumerate(u_list):
 			print('%4.1f%s' % (u, ''.join(['%12s' % (''.join(['*', '%f' % m_list[i][j]]))\
