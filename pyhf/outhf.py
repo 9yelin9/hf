@@ -234,7 +234,7 @@ class OutHF:
 		plt.show()
 
 	def ShowPhase(self, Nlevel=10, specific_init=0, xmin=0, xmax=0, ymin=0, ymax=0):
-		tol_gap = 0.15
+		tol_gap = 0.2
 		tol_m   = 0.1
 
 		dN, NF = (0.1, 6) if re.search('F', self.type) else (0.2, 12)
