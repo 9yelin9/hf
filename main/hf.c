@@ -4,9 +4,9 @@
 
 // force symmetry
 void SymmetryN(double *n, double *m) {}
-void SymmetryA(double *n, double *m) {n[2] = n[0];        m[2] = m[0];}
-void SymmetryC(double *n, double *m) {n[2] = n[1];        m[2] = m[1];}
-void SymmetryG(double *n, double *m) {n[2] = n[1] = n[0]; m[2] = m[1] = m[0];}
+void SymmetryX(double *n, double *m) {n[0] = n[2];        m[0] = m[2];}
+void SymmetryZ(double *n, double *m) {n[1] = n[2];        m[1] = m[2];}
+void SymmetryA(double *n, double *m) {n[0] = n[1] = n[2]; m[0] = m[1] = m[2];}
 
 int main(int argc, char *argv[]) {
 	if(argc < 2) {
@@ -44,10 +44,9 @@ int main(int argc, char *argv[]) {
 
 	// Symmetry
 	void (*Symmetry)(double*, double*);
-	if     (strstr(c.sym, "A")) Symmetry = SymmetryA;
-	else if(strstr(c.sym, "C")) Symmetry = SymmetryC;
-	else if(strstr(c.sym, "G")) Symmetry = SymmetryG;
-	else if(strstr(c.sym, "N")) Symmetry = SymmetryN;
+	if     (strstr(c.sym, "X")) Symmetry = SymmetryX;
+	else if(strstr(c.sym, "Z")) Symmetry = SymmetryZ;
+	else if(strstr(c.sym, "A")) Symmetry = SymmetryA;
 	else                        Symmetry = SymmetryN;
 
 	// Interaction, Basis

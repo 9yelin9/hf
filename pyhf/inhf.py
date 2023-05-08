@@ -15,7 +15,7 @@ class InHF:
 		self.strain = strain
 		self.path_input = 'input/%s' % self.strain
 		self.path_save  = '%s/tb'    % self.path_input
-		os.makedirs(self.path_save, exist_ok=True)
+		if os.path.isdir(self.path_input): os.makedirs(self.path_save, exist_ok=True)
 	
 	def GenLat(self):
 		fwn = '%s/wann/wannier90_hr.dat' % self.path_input

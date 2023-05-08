@@ -18,6 +18,7 @@ parser.add_argument('-i', '--inhf',  nargs='+', default=None, help='l  <strain> 
 																  +'kg <strain> <type> [Nkg1]                                     : GenKG\n'\
 																  +'kb <strain> <type> [Nkb]                                      : GenKB\n')
 parser.add_argument('-o', '--outhf', nargs='+', default=None, help='sb <save> <strain> <type> <JU> <N> <U> [Nk] [eta] [is_unfold] : ShowBandDOS\n'\
+																  +'po <save> <strain> <type> <JU> <N>                            : PrintOc\n'\
 																  +'pm <save> <strain> <type> <JU> <N>                            : PrintMag\n'\
 																  +'sm <save> <strain> <type> <JU> <N>                            : ShowMag\n'\
 																  +'sp <save> <strain> <type> <JU> [specific_init]                : ShowPhase\n')
@@ -41,7 +42,8 @@ if args.outhf:
 	oh = outhf.OutHF(*args.outhf[1:5])
 
 	if   args.outhf[0] == 'sb': oh.ShowBandDOS(*args.outhf[5:])
-	elif args.outhf[0] == 'pm': oh.PrintMag(*args.outhf[5:], *args.lim)
+	elif args.outhf[0] == 'po': oh.PrintOc(*args.outhf[5:])
+	elif args.outhf[0] == 'pm': oh.PrintMag(*args.outhf[5:])
 	elif args.outhf[0] == 'sm': oh.ShowMag(*args.outhf[5:], *args.lim)
 	elif args.outhf[0] == 'sp': oh.ShowPhase(*args.lim)
 	sys.exit()

@@ -197,7 +197,7 @@ void GenSolution(Config c, Solution *s, void (*Symmetry)(), void (*Interaction)(
 	time_t t0 = time(NULL);
 
 	FILE *fk = fopen(fkn, "r"), *fu = fopen(fun, "r"), *ft = fopen(ftn, "rb"), *fo = fopen(fon, "w"), *fs = fopen(fsn, "wb");
-	int itr, i, j, is_cvg, one = strstr(c.type, "F") ? 1 : -1;
+	int itr, i, j, is_cvg;
 	char buf[1024];
 	double tmp, w[c.Nkg], uf[c.Nkg][c.Ni], ev[c.Nkg][c.Nb], e_min, e_max;
 	double V = pow(2*M_PI, DIM), oc[c.Nb], oc_sum, cvg[Nc][CVG_MAX], avg;
@@ -274,7 +274,7 @@ void GenSolution(Config c, Solution *s, void (*Symmetry)(), void (*Interaction)(
 		for(i=0; i<c.Ni; i++) {
 			for(j=0; j<Nc; j++) {
 				s->n[j] +=  oc[OC_IDX] + oc[OC_IDX + c.Ns];
-				s->m[j] += (oc[OC_IDX] - oc[OC_IDX + c.Ns]) * pow(one, i);
+				s->m[j] += (oc[OC_IDX] - oc[OC_IDX + c.Ns]) * pow(-1, i);
 			}
 		}
 		for(i=0; i<Nc; i++) {

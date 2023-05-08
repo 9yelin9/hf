@@ -22,7 +22,8 @@ class OutHF:
 		self.type   = type
 		self.JU     = float(JU)
 
-		self.Nb = 6 if re.search('F', self.type) else 12
+		self.Ni, self.Nb = (1, 6) if re.search('F', self.type) else (2, 12)
+		self.Ns = self.Ni * self.Nc
 
 		self.path_output = 'output/%s/%s_%s_JU%.2f/' % (save, self.strain, self.type, self.JU)
 		self.path_save = '%s/diagram/' % self.path_output
@@ -100,7 +101,8 @@ class OutHF:
 		ax.axhline(y=0.0, ls=':', lw=2, color='dimgrey')
 		
 		for i in range(1, self.Nc+1): 
-			ax.plot(data[:, i]+data[:, i+self.Nc], data[:, 0], ls=self.t2g_ls[i-1], lw=abs(i-5), color=self.t2g_color[i-1], label=self.t2g_label[i-1])
+			dos = np.sum([data[:, i + j*self.Nc] for j in range(self.Ni)], axis=0)
+			ax.plot(dos, data[:, 0], ls=self.t2g_ls[i-1], lw=abs(i-5), color=self.t2g_color[i-1], label=self.t2g_label[i-1]) 
 			#ax.fill_betweenx(data[:, 0], data[:, i]+data[:, i+self.Nc], color=self.t2g_color[i-1], alpha=0.5)
 
 		#ax.grid(True, axis='x')
@@ -129,6 +131,29 @@ class OutHF:
 		print(fname)
 		plt.show()
 
+	def PrintOc(self, N):
+		N = float(N)
+
+		dU = float(re.sub('dU', '', re.search('dU\d[.]?\d*', self.save).group()))
+		UF = float(re.sub('UF', '', re.search('UF\d[.]?\d*', self.save).group()))
+		u_list = np.arange(0, UF+dU, dU)
+
+		fn_list = sorted([self.path_output+'/oc/'+f for f in os.listdir(self.path_output+'/oc')\
+				if re.search('N%.1f' % N, f)])
+
+		print('%s %s %s N=%.1f' % (self.save, self.strain, self.type, N))
+		print('%4s%s' % ('U', ''.join(['%12s' % s for s in ['m_xy', 'm_yz', 'm_zx', 'm_t2g']])))
+		for u, fn in zip(u_list, fn_list):
+			with open(fn, 'r') as f: oc = np.genfromtxt(f, skip_header=1)[-1, :]
+
+			m = np.zeros(self.Nc+1)
+			for i in range(self.Ni):
+				for j in range(self.Nc):
+					m[j] += (oc[self.Nc*i + j] - oc[self.Nc*i + j + self.Ns]) * (-1**i)
+			m[-1] = np.sum(m[:-1])
+
+			print('%4.1f%s' % (u, ''.join(['%12f' % mi for mi in m])))
+
 	def PrintMag(self, N):
 		N = float(N)
 
@@ -141,7 +166,7 @@ class OutHF:
 
 		e_list = []
 		m_list = []
-		for s, mk in zip(save_list, ['s', 'o', '^']):
+		for s in save_list:
 			fn_list = sorted(['%s/band_Nk%d/%s' % (s, self.Nkb, f) for f in os.listdir('%s/band_Nk%d' % (s, self.Nkb))\
 					if re.search('N%.1f_' % N, f)])
 			e, m = np.array([(FnDict(fn)['e'], FnDict(fn)['m']) for fn in fn_list]).T
@@ -151,7 +176,7 @@ class OutHF:
 
 		grd_idx = np.argmin(e_list, axis=0)
 
-		print('%s N=%.1f' % (self.path_output, N))
+		print('%s %s %s N=%.1f' % (self.save, self.strain, self.type[0], N))
 		print('%4s%s' % ('U', ''.join(['%12s' % re.sub('_', '', re.search('[A-Z]\d_', s).group()) for s in save_list])))
 		for j, u in enumerate(u_list):
 			print('%4.1f%s' % (u, ''.join(['%12s' % (''.join(['*', '%f' % m_list[i][j]]))\
