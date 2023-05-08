@@ -160,8 +160,8 @@ class OutHF:
 		UF = float(re.sub('UF', '', re.search('UF\d[.]?\d*', self.save).group()))
 		u_list = np.arange(0, UF+dU, dU)
 
-		save_list = ['output/%s/%s' % (self.save, s) for s in os.listdir('output/%s' % self.save)\
-				if re.search('%s_%s\d_JU%.2f' % (self.strain, self.type[0], self.JU), s)]
+		save_list = sorted(['output/%s/%s' % (self.save, s) for s in os.listdir('output/%s' % self.save)\
+				if re.search('%s_%s\d_JU%.2f' % (self.strain, self.type[0], self.JU), s)])
 		type_list = [re.sub('_', '', re.search('[A-Z]\d_', s).group()) for s in save_list]
 
 		e_list = []
@@ -194,8 +194,8 @@ class OutHF:
 		UF = float(re.sub('UF', '', re.search('UF\d[.]?\d*', self.save).group()))
 		u_list = np.arange(0, UF+dU, dU)
 
-		save_list = ['output/%s/%s' % (self.save, s) for s in os.listdir('output/%s' % self.save)\
-				if re.search('%s_%s\d_JU%.2f' % (self.strain, self.type[0], self.JU), s)]
+		save_list = sorted(['output/%s/%s' % (self.save, s) for s in os.listdir('output/%s' % self.save)\
+				if re.search('%s_%s\d_JU%.2f' % (self.strain, self.type[0], self.JU), s)])
 
 		fig, ax = plt.subplots(1, 2, figsize=(10, 5), constrained_layout=True)
 
