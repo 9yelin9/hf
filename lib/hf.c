@@ -50,7 +50,7 @@ void CalcE(Config c, Solution *s, double w, double *ev, lapack_complex_double *e
 	int i, j;
 
 	for(i=0; i<c.Nb; i++) {
-		if(ev[i] < s->dntop) {
+		if(ev[i] < s->fermi) {
 			for(j=0; j<c.Nb; j++) *e += ev[i] * CSQR(es[c.Nb*i + j]) * w;
 		}
 	}
@@ -186,9 +186,9 @@ void GenSolution(Config c, Solution *s, void (*Symmetry)(), void (*Interaction)(
 	FILE *fk = fopen(fkn, "r"), *fu = fopen(fun, "r"), *ft = fopen(ftn, "rb"), *fo = fopen(fon, "w"), *fs = fopen(fsn, "wb");
 	int itr, i, j, is_cvg;
 	char buf[1024];
-	double tmp, w[c.Nkg], uf[c.Nkg][c.Ni], ev[c.Nkg][c.Nb], e_min, e_max;
+	double tmp, w[c.Nkg], uf[c.Nkg][c.Ni], ev[c.Nkg][c.Nb], e_min, e_max, e = 0;
 	double V = pow(2*M_PI, DIM), oc[c.Nb], oc_sum, cvg[Nc][CVG_MAX], avg;
-	double uplow = 100, dntop = -100, e = 0;
+	double uplow = 100, dntop = -100;
 	lapack_complex_double tb[c.Nkg][c.Nb*c.Nb], es[c.Nkg][c.Nb*c.Nb];
 
 	// w
@@ -289,8 +289,8 @@ void GenSolution(Config c, Solution *s, void (*Symmetry)(), void (*Interaction)(
 	fclose(fo);
 
 	for(i=0; i<c.Nkg; i++) CalcGap(c, s, ev[i], es[i], &uplow, &dntop);
-	s->dntop = dntop;
 	s->gap   = uplow - dntop;
+	s->dntop = dntop;
 
 	for(i=0; i<c.Nkg; i++) CalcE(c, s, w[i], ev[i], es[i], &e);
 	s->e = e / V;

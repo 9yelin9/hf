@@ -44,7 +44,7 @@ int main(int argc, char *argv[]) {
 	// Solution
 	if(strstr(c.sol, "init")) {
 		s.n[0] = s.n[1] = s.n[2] = c.N / 3;
-		s.ns = s.ms = s.fermi = s.dntop = s.gap = s.e = 100;
+		s.ns = s.ms = s.fermi = s.e = 100;
 
 		if     (strstr(c.type, "0")) {s.m[0] = M_MIN; s.m[1] = M_MIN; s.m[2] = M_MIN;} // no magnetized orbital
 		else if(strstr(c.type, "1")) {s.m[0] = M_MAX; s.m[1] = M_MIN; s.m[2] = M_MIN;} // one magnetized orbital
