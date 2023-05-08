@@ -101,7 +101,7 @@ class OutHF:
 		ax.axhline(y=0.0, ls=':', lw=2, color='dimgrey')
 		
 		for i in range(1, self.Nc+1): 
-			dos = np.sum([data[:, i + j*self.Nc] for j in range(self.Ni)], axis=0)
+			dos = np.sum([data[:, i + j*self.Nc] for j in range(self.Nb // self.Nc)], axis=0)
 			ax.plot(dos, data[:, 0], ls=self.t2g_ls[i-1], lw=abs(i-5), color=self.t2g_color[i-1], label=self.t2g_label[i-1]) 
 			#ax.fill_betweenx(data[:, 0], data[:, i]+data[:, i+self.Nc], color=self.t2g_color[i-1], alpha=0.5)
 
@@ -134,17 +134,14 @@ class OutHF:
 	def PrintOc(self, N):
 		N = float(N)
 
-		dU = float(re.sub('dU', '', re.search('dU\d[.]?\d*', self.save).group()))
-		UF = float(re.sub('UF', '', re.search('UF\d[.]?\d*', self.save).group()))
-		u_list = np.arange(0, UF+dU, dU)
-
 		fn_list = sorted([self.path_output+'/oc/'+f for f in os.listdir(self.path_output+'/oc')\
 				if re.search('N%.1f' % N, f)])
 
 		print('%s %s %s N=%.1f' % (self.save, self.strain, self.type, N))
 		print('%4s%s' % ('U', ''.join(['%12s' % s for s in ['n_xy', 'n_yz', 'n_zx', 'm_xy', 'm_yz', 'm_zx', 'm_t2g']])))
-		for u, fn in zip(u_list, fn_list):
+		for fn in fn_list:
 			with open(fn, 'r') as f: oc = np.genfromtxt(f, skip_header=1)[-1, 1:]
+			u = float(re.sub('_U', '', re.search('_U\d+[.]\d+', fn).group()))
 
 			n = np.zeros(self.Nc)
 			m = np.zeros(self.Nc+1)
