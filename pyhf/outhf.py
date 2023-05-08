@@ -292,7 +292,7 @@ class OutHF:
 		ax.set_xticks(range(0, NF+1, int(dN*10)), labels=range(7))
 		ax.set_yticks(range(0, int(UF)+1, 2))
 		ax.set_xlabel(r'$N$')
-		ax.set_ylabel(r'$U$', labelpad=20)
+		ax.set_ylabel(r'$U$')
 
 		xlim = (xmin-0.2, xmax+0.2) if xmin+xmax > 1e-6 else (np.min(X), np.max(X))
 		ylim = (ymin-0.2, ymax+0.2) if ymin+ymax > 1e-6 else (np.min(Y), np.max(Y))
