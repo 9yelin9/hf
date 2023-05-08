@@ -268,8 +268,6 @@ void GenSolution(Config c, Solution *s, void (*Symmetry)(), void (*Interaction)(
 			s->ns += s->n[i];
 			s->ms += s->m[i];
 		}
-		for(i=0; i<c.Nb; i++) printf("%f\t", oc[i]);
-		printf("\n");
 
 		fprintf(fo, "%22.16f", s->fermi);
 		for(i=0; i<c.Nb; i++) fprintf(fo, "%22.16f", oc[i]);
