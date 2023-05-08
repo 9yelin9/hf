@@ -144,7 +144,7 @@ class OutHF:
 		print('%s %s %s N=%.1f' % (self.save, self.strain, self.type, N))
 		print('%4s%s' % ('U', ''.join(['%12s' % s for s in ['m_xy', 'm_yz', 'm_zx', 'm_t2g']])))
 		for u, fn in zip(u_list, fn_list):
-			with open(fn, 'r') as f: oc = np.genfromtxt(f, skip_header=1)[-1, :]
+			with open(fn, 'r') as f: oc = np.genfromtxt(f, skip_header=1)[-1, 1:]
 
 			m = np.zeros(self.Nc+1)
 			for i in range(self.Ni):
