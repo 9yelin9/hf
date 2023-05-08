@@ -154,7 +154,7 @@ class OutHF:
 					m[j] += (oc[self.Nc*i + j] - oc[self.Nc*i + j + self.Ns]) * (-1**i)
 			m[-1] = np.sum(m[:-1])
 
-			print('%4.1f%s%s' % (u, ''.join(['%12f' % ni for ni in n], ''.join(['%12f' % mi for mi in m])))
+			print('%4.1f%s%s' % (u, ''.join(['%12f' % ni for ni in n]), ''.join(['%12f' % mi for mi in m])))
 
 	def PrintMag(self, N):
 		N = float(N)
