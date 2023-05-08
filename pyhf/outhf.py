@@ -162,6 +162,7 @@ class OutHF:
 
 		save_list = ['output/%s/%s' % (self.save, s) for s in os.listdir('output/%s' % self.save)\
 				if re.search('%s_%s\d_JU%.2f' % (self.strain, self.type[0], self.JU), s)]
+		type_list = [re.sub('_', '', re.search('[A-Z]\d_', s).group()) for s in save_list]
 
 		e_list = []
 		m_list = []
@@ -176,9 +177,14 @@ class OutHF:
 		grd_idx = np.argmin(e_list, axis=0)
 
 		print('%s %s %s JU=%.2f N=%.1f' % (self.save, self.strain, self.type[0], self.JU, N))
-		print('%4s%s' % ('U', ''.join(['%12s' % re.sub('_', '', re.search('[A-Z]\d_', s).group()) for s in save_list])))
+		print('%4s%s%s' % ('U',\
+				''.join(['%12s' % (''.join(['e_', '%s' % t])) for t in type_list]), \
+				''.join(['%12s' % (''.join(['m_', '%s' % t])) for t in type_list])))
 		for j, u in enumerate(u_list):
-			print('%4.1f%s' % (u, ''.join(['%12s' % (''.join(['*', '%f' % m_list[i][j]]))\
+			print('%4.1f%s%s' % (u, \
+					''.join(['%12s' % (''.join(['*', '%f' % e_list[i][j]]))\
+					if i == grd_idx[j] else '%12f' % e_list[i][j] for i, _ in enumerate(save_list)]),
+					''.join(['%12s' % (''.join(['*', '%f' % m_list[i][j]]))\
 					if i == grd_idx[j] else '%12f' % m_list[i][j] for i, _ in enumerate(save_list)])))
 
 	def ShowMag(self, N, xmin=0, xmax=0, ymin=0, ymax=0):
