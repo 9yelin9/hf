@@ -21,7 +21,7 @@ parser.add_argument('-o', '--outhf', nargs='+', default=None, help='sb <save> <s
 																  +'po <save> <strain> <type> <JU> <N>                            : PrintOc\n'\
 																  +'pm <save> <strain> <type> <JU> <N>                            : PrintMag\n'\
 																  +'sm <save> <strain> <type> <JU> <N>                            : ShowMag\n'\
-																  +'sp <save> <strain> <type> <JU> [specific_init]                : ShowPhase\n')
+																  +'sp <save> <strain> <type> <JU> [Nlevel] [specific_init]       : ShowPhase\n')
 parser.add_argument('--lim', nargs='+', type=float, default=[], help='[xmin] [xmax] [ymin] [ymax]')
 args = parser.parse_args()                                                                     
 

@@ -233,7 +233,7 @@ class OutHF:
 		print(fname)
 		plt.show()
 
-	def ShowPhase(self, specific_init=0, xmin=0, xmax=0, ymin=0, ymax=0):
+	def ShowPhase(self, Nlevel=10, specific_init=0, xmin=0, xmax=0, ymin=0, ymax=0):
 		tol_gap = 0.1
 		tol_m   = 0.1
 
@@ -272,7 +272,7 @@ class OutHF:
 		#ct = ax.contour(N, U, m, levels=[tol_m], colors='w', linestyles='dotted')
 		#if abs(tol_m - 0.1) < 1e-6: ax.clabel(ct, ct.levels, inline=True, fmt='%.1f', fontsize=16)
 
-		cf = ax.contourf(X, Y, Z, levels=np.linspace(0, self.Nb//2, 10), cmap='Blues_r')
+		cf = ax.contourf(X, Y, Z, levels=np.linspace(0, self.Nb//2, Nlevel), cmap='Blues_r')
 		cb = plt.colorbar(cf, format='%.1f')
 		cb.set_ticks([0, self.Nb//2])
 		cb.set_ticklabels(['0', '3'])
