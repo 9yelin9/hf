@@ -106,7 +106,7 @@ class OutHF:
 			#ax.fill_betweenx(data[:, 0], data[:, i]+data[:, i+self.Nc], color=self.t2g_color[i-1], alpha=0.5)
 
 		#ax.grid(True, axis='x')
-		ax.set_xlim([0, 1.1])
+		if np.max(data[:, 0:]) < 1 : ax.set_xlim([0, 1.1])
 		ax.set_xticks([0, 1])
 		ax.set_ylim(e_min, e_max)
 		ax.yaxis.tick_right()
