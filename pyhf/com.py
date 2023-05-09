@@ -49,7 +49,7 @@ def GroundOnly(fn_list, n_list, u_list):
 			grd_fn = []
 			for fn in fn_list:
 				if re.search('N%.1f_U%.1f' % (n, u), fn):
-					e_list.append(FnDict(fn)['e'])
+					e_list.append(np.around(FnDict(fn)['e']))
 					grd_fn.append(fn)
 			grd_fn_list.append(grd_fn[np.argmin(e_list)])
 
