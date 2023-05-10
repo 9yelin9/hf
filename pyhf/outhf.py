@@ -169,7 +169,7 @@ class OutHF:
 		for s in save_list:
 			fn_list = sorted(['%s/band_Nk%d/%s' % (s, self.Nkb, f) for f in os.listdir('%s/band_Nk%d' % (s, self.Nkb))\
 					if re.search('N%.1f_' % N, f)])
-			e, m = np.array([(np.around(FnDict(fn)['e']), FnDict(fn)['m']) for fn in fn_list]).T
+			e, m = np.array([(FnDict(fn)['e'], FnDict(fn)['m']) for fn in fn_list]).T
 
 			e_list.append(e)
 			m_list.append(m)
@@ -204,7 +204,7 @@ class OutHF:
 		for s, mk in zip(save_list, ['s', 'o', '^']):
 			fn_list = sorted(['%s/band_Nk%d/%s' % (s, self.Nkb, f) for f in os.listdir('%s/band_Nk%d' % (s, self.Nkb))\
 					if re.search('N%.1f_' % N, f)])
-			e, m = np.array([(np.around(FnDict(fn)['e']), FnDict(fn)['m']) for fn in fn_list]).T
+			e, m = np.array([(FnDict(fn)['e'], FnDict(fn)['m']) for fn in fn_list]).T
 
 			label = re.sub('_', '', re.search('%s\d_' % self.type[0], s).group())
 			ax[0].plot(u_list, e, marker=mk, ms=12, label=label)
@@ -262,7 +262,7 @@ class OutHF:
 			m.append([0, u, 0])
 			for n in n_list:
 				fn = [fn for fn in fn_list if re.search('N%.1f_U%.1f' % (n, u), fn)][0]
-				m.append([FnDict(fn)['N'], FnDict(fn)['U'], abs(FnDict(fn)['m'])])
+				m.append([FnDict(fn)['N'], FnDict(fn)['U'], np.abs(FnDict(fn)['m'])])
 				if FnDict(fn)['gap'] > tol_gap: ins.append([FnDict(fn)['N'], FnDict(fn)['U'], [FnDict(fn)['type']]])
 			m.append([NF, u, 0])
 
