@@ -35,7 +35,7 @@ def FnDict(fn):
 		'fermi': float(re.sub('fermi', '', re.search('fermi[-]?\d+[.]\d+', fn).group())),
 		'gap':   float(re.sub('gap',   '', re.search('gap[-]?\d+[.]\d+',   fn).group())),
 	}
-	fn_dict['e'] = np.around(fn_dict['e'])
+	#fn_dict['e'] = np.around(fn_dict['e'])
 
 	return fn_dict
 
