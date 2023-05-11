@@ -45,7 +45,7 @@ if args.outhf:
 	elif args.outhf[0] == 'po': oh.PrintOc(*args.outhf[5:])
 	elif args.outhf[0] == 'pm': oh.PrintMag(*args.outhf[5:])
 	elif args.outhf[0] == 'sm': oh.ShowMag(*args.outhf[5:], *args.lim)
-	elif args.outhf[0] == 'sp': oh.ShowPhase(*args.lim)
+	elif args.outhf[0] == 'sp': oh.ShowPhase(*args.outhf[5:], *args.lim)
 	sys.exit()
 
 parser.print_help()
