@@ -240,6 +240,8 @@ class OutHF:
 		plt.show()
 
 	def ShowPhase(self, Nlevel=10, specific_init=0, xmin=0, xmax=0, ymin=0, ymax=0):
+		Nlevel = int(Nlevel)
+
 		tol_gap = 0.2
 		tol_m   = 0.1
 
