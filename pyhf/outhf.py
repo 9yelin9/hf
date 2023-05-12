@@ -296,7 +296,7 @@ class OutHF:
 			print(ins_n, [(u, t) for u, t in zip(ins_u, ins_t)])
 		ax.plot([np.max(X)], [np.max(Y)], alpha=1) 
 
-		ax.text(0.5, 0.75, self.type[0], bbox={'boxstyle':'Square', 'facecolor':'white'})
+		#ax.text(0.5, 0.75, self.type[0], bbox={'boxstyle':'Square', 'facecolor':'white'})
 		ax.set_xticks(range(0, NF+1, int(dN*10)), labels=range(7))
 		ax.set_yticks(range(0, int(UF)+1, 2))
 		ax.set_xlabel(r'$N$')
