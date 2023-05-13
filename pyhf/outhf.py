@@ -61,7 +61,7 @@ class OutHF:
 		ax.axhline(y=0, ls=':', lw=2, color='dimgrey')
 
 		if is_unfold:
-			axins = ax.inset_axes([0.92, 0.35, 0.052, 0.37])
+			#axins = ax.inset_axes([0.92, 0.35, 0.052, 0.37])
 
 			itv = 10
 			norm = plt.Normalize(-0.5, 1)
@@ -71,13 +71,13 @@ class OutHF:
 			data_tot = data_tot[data_tot[:, -1].argsort()[::-1]] 
 			
 			ax.scatter(data_tot[:, 0], data_tot[:, 1], marker='$○$', lw=0.1, c=data_tot[:, 2], s=4+(10*(data_tot[:, 2]))**(2.5), cmap='Blues', norm=norm)
-			axins.scatter(np.zeros(10), w, marker='$○$', lw=0.1, c=w, s=4+(10*(w))**(2.5), cmap='Blues', norm=norm)
+			#axins.scatter(np.zeros(10), w, marker='$○$', lw=0.1, c=w, s=4+(10*(w))**(2.5), cmap='Blues', norm=norm)
 
-			axins.set_xticks([])
-			axins.set_yticks([np.min(w), 1])
-			axins.set_yticklabels([0, 1])
-			axins.set_ylim([-0.05, 1.2])
-			axins.tick_params(axis='both', which='major', labelsize=18)
+			#axins.set_xticks([])
+			#axins.set_yticks([np.min(w), 1])
+			#axins.set_yticklabels([0, 1])
+			#axins.set_ylim([-0.05, 1.2])
+			#axins.tick_params(axis='both', which='major', labelsize=18)
 			#axins.yaxis.tick_right()
 		else:
 			for i in range(self.Nb): ax.plot(x, data[:, i], color='tab:blue')
