@@ -280,10 +280,10 @@ class OutHF:
 		#ct = ax.contour(N, U, m, levels=[tol_m], colors='w', linestyles='dotted')
 		#if abs(tol_m - 0.1) < 1e-6: ax.clabel(ct, ct.levels, inline=True, fmt='%.1f', fontsize=16)
 
-		cf = ax.contourf(X, Y, Z, levels=np.linspace(0.1, self.Nb//2, Nlevel), cmap='autumn')
+		cf = ax.contourf(X, Y, Z, levels=np.linspace(0.1, self.Nb//2, Nlevel), cmap='pink')
 		cb = plt.colorbar(cf, format='%.1f')
 		cb.set_ticks([0.1, self.Nb//2])
-		cb.set_ticklabels(['0.1', '3'])
+		cb.set_ticklabels(['0.1', '3.0'])
 
 		labels = ['_nolegend_' for _ in range(self.Nb)]
 		labels[0] = 'Insulator'
