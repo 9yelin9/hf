@@ -61,8 +61,7 @@ class OutHF:
 		ax.axhline(y=0, ls=':', lw=2, color='dimgrey')
 
 		if is_unfold:
-			#axins = ax.inset_axes([0.92, 0.35, 0.052, 0.37])
-			axins = ax.inset_axes([0.92, 0.33, 0.052, 0.37])
+			axins = ax.inset_axes([0.92, 0.35, 0.052, 0.37])
 
 			itv = 10
 			norm = plt.Normalize(-0.5, 1)
