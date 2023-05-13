@@ -282,8 +282,8 @@ class OutHF:
 
 		cf = ax.contourf(X, Y, Z, levels=np.linspace(0.1, self.Nb//2, Nlevel), cmap='autumn')
 		cb = plt.colorbar(cf, format='%.1f')
-		cb.set_ticks([0, self.Nb//2])
-		cb.set_ticklabels(['0', '3'])
+		cb.set_ticks([0.1, self.Nb//2])
+		cb.set_ticklabels(['0.1', '3'])
 
 		labels = ['_nolegend_' for _ in range(self.Nb)]
 		labels[0] = 'Insulator'
