@@ -85,7 +85,6 @@ class OutHF:
 		ax.grid(True, axis='x')
 		ax.set_xticks(hsp_point)
 		ax.set_xticklabels(hsp_label)
-		ax.set_xlabel(' ')
 		ax.set_ylabel(r'$E-E_{F}$')
 		ax.set_ylim(e_min, e_max)
 
@@ -126,6 +125,8 @@ class OutHF:
 
 		e_min, e_max, fn = self.ShowBand(N, U, ax[0], Nk, is_unfold=int(is_unfold))
 		self.ShowDOS(N, U, ax[1], e_min, e_max, ep)
+		ax[0].set_xlabel(' ')
+		ax[1].set_xlabel(' ')
 
 		fname = self.path_save + re.sub('\S+/', '', re.sub('txt', 'png', fn))
 		fig.savefig(fname, dpi=300)
