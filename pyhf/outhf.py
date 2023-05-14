@@ -85,6 +85,7 @@ class OutHF:
 		ax.grid(True, axis='x')
 		ax.set_xticks(hsp_point)
 		ax.set_xticklabels(hsp_label)
+		ax.set_xlabel(' ')
 		ax.set_ylabel(r'$E-E_{F}$')
 		ax.set_ylim(e_min, e_max)
 
