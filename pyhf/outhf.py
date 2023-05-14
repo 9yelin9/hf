@@ -111,7 +111,7 @@ class OutHF:
 		ax.set_ylim(e_min, e_max)
 		ax.yaxis.tick_right()
 		ax.yaxis.set_ticklabels([])
-		ax.legend(fontsize=30, labelspacing=0.02, handletextpad=0.3, handlelength=1.0, borderpad=0.1, borderaxespad=0.1, frameon=False, loc='lower right')
+		#ax.legend(fontsize=30, labelspacing=0.02, handletextpad=0.3, handlelength=1.0, borderpad=0.1, borderaxespad=0.1, frameon=False, loc='lower right')
 
 	def ShowBandDOS(self, N, U, Nk=0, ep=0.1, is_unfold=0):
 		N  = float(N)
