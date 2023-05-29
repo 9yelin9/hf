@@ -121,7 +121,7 @@ class OutHF:
 		if Nk: Nk = int(Nk)
 		else:  Nk = self.Nkb
 
-		fig, ax = plt.subplots(1, 2, width_ratios=[4, 1], figsize=(6, 5), constrained_layout=True)
+		fig, ax = plt.subplots(1, 2, width_ratios=[3, 1], figsize=(6, 5), constrained_layout=True)
 
 		e_min, e_max, fn = self.ShowBand(N, U, ax[0], Nk, is_unfold=int(is_unfold))
 		self.ShowDOS(N, U, ax[1], e_min, e_max, ep)
