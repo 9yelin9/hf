@@ -3,10 +3,11 @@
 #include "hf.h" 
 
 void ReadConfig(Config *c) {
-	char fn[256];
-	sprintf(fn, "input/%s/config_%c.txt", c->strain, c->type[0]);
+	char fn0[256], fn[256];
+	sprintf(fn0, "input/%s/config.txt",    c->strain);
+	sprintf(fn,  "input/%s/config_%c.txt", c->strain, c->type[0]);
 
-	FILE *f0 = fopen("input/config.txt", "r"), *f = fopen(fn, "r");
+	FILE *f0 = fopen(fn0, "r"), *f = fopen(fn, "r");
 	int i;
 	char buf[1024];
 
