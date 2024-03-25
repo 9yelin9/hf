@@ -28,7 +28,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
-#include <lapack.h>
+#include <lapacke/lapack.h>
 #include <sys/stat.h>
 
 typedef struct Lattice {

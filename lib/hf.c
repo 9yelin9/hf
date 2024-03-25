@@ -29,7 +29,7 @@ void FileName(Config c, Solution *s, char *ftype, char *fn) {
 }
 
 void ReadSolution(Config c, Solution *s) {
-	char fsn[256];
+	char fsn[512];
 	sprintf(fsn, "%s/sol/%s.bin", c.path_save, c.sol);
 
 	FILE *fs = fopen(fsn, "rb");
