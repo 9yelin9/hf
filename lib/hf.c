@@ -19,12 +19,20 @@ void FileName(Config c, Solution *s, char *ftype, char *fn) {
 			   	path_save, c.N, c.U);
 	}
 	else if(strstr(ftype, "oc")) {
+		/*
 		sprintf(fn, "%s/N%.1f_U%.1f_%s.txt",\
 			   	path_save, c.N, c.U, c.runtime);
+		*/
+		sprintf(fn, "%s/N%.1f_U%.1f.txt",\
+			   	path_save, c.N, c.U);
 	}
 	else {
+		/*
 		sprintf(fn, "%s/N%.1f_U%.1f_n%f_m%f_e%f_gap%f_fermi%f_dntop%f_%s.txt",\
 			   	path_save, c.N, c.U, s->ns, s->ms, s->e, s->gap, s->fermi, s->dntop, c.runtime);
+		*/
+		sprintf(fn, "%s/N%.1f_U%.1f_n%f_m%f_e%f_gap%f_fermi%f_dntop%f.txt",\
+			   	path_save, c.N, c.U, s->ns, s->ms, s->e, s->gap, s->fermi, s->dntop);
 	}
 }
 
